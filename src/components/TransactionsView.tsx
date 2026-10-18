@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, upsertRule } from '../lib/rules';
+import { download, toCsv } from '../lib/export';
 import { sortedCategories } from '../lib/store';
 import type { BudgetData, Transaction } from '../lib/types';
 
@@ -105,6 +106,15 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           Remember for this merchant
         </label>
+        <button
+          disabled={shown.length === 0}
+          title="Download the transactions shown below as a CSV file, oldest first unless sorted by amount"
+          onClick={() =>
+            download(`transactions-${month === 'all' ? 'all' : month}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(sort === 'date' ? [...shown].reverse() : shown))
+          }
+        >
+          Download CSV
+        </button>
       </div>
       {shown.length > 0 && (month !== 'all' || category !== 'all' || search) && (
         <p className="muted small">

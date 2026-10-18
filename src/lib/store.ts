@@ -53,8 +53,21 @@ export function loadData(): BudgetData {
   }
 }
 
-export function saveData(data: BudgetData): void {
-  localStorage.setItem(KEY, JSON.stringify(data));
+/**
+ * Roughly how much a browser lets one website keep. Most allow about 5 million
+ * characters, so this is a cautious guess rather than an exact limit.
+ */
+export const STORAGE_LIMIT = 5_000_000;
+
+/** Saves to this browser. Returns the share of the storage limit used, or null if the browser refused to save. */
+export function saveData(data: BudgetData): number | null {
+  const json = JSON.stringify(data);
+  try {
+    localStorage.setItem(KEY, json);
+    return json.length / STORAGE_LIMIT;
+  } catch {
+    return null;
+  }
 }
 
 /** Adds new transactions, skipping any already saved, and tags them with existing rules. */
