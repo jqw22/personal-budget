@@ -316,10 +316,12 @@ table.summary tr.section th {
   letter-spacing: 0.04em;
 }
 
-table.summary tr.section th.num {
-  font-size: 0.9rem;
-  text-transform: none;
-  letter-spacing: 0;
+table.summary tr.subtotal th {
+  border-top: 1px solid var(--muted);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 table.summary tr.net-row th {
