@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
+import { AccountView, syncLabel } from './components/AccountView';
 import { ImportView } from './components/ImportView';
 import { RulesView } from './components/RulesView';
 import { SummaryView } from './components/SummaryView';
 import { TransactionsView, UNTAGGED_FILTER, type TransactionFilter } from './components/TransactionsView';
 import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
+import { useSync } from './lib/useSync';
 
-type Tab = 'summary' | 'import' | 'transactions' | 'rules';
+type Tab = 'summary' | 'import' | 'transactions' | 'rules' | 'account';
 
 export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
@@ -18,6 +20,8 @@ export function App() {
     setTab(next);
   }
 
+  const sync = useSync(data, setData);
+
   useEffect(() => saveData(data), [data]);
 
   const untagged = data.transactions.filter((t) => !t.category).length;
@@ -25,7 +29,12 @@ export function App() {
   return (
     <div className="app">
       <header>
-        <h1>Personal Budget</h1>
+        <div>
+          <h1>Personal Budget</h1>
+          <button className={`link sync-status ${sync.state.status}`} onClick={() => openTab('account')}>
+            {sync.state.status === 'signed-out' ? 'Not signed in: data is only on this device' : syncLabel(sync.state)}
+          </button>
+        </div>
         <nav>
           <button className={tab === 'summary' ? 'active' : ''} onClick={() => openTab('summary')}>
             Summary
@@ -38,6 +47,9 @@ export function App() {
           </button>
           <button className={tab === 'rules' ? 'active' : ''} onClick={() => openTab('rules')}>
             Categories & rules
+          </button>
+          <button className={tab === 'account' ? 'active' : ''} onClick={() => openTab('account')}>
+            Account
           </button>
         </nav>
       </header>
@@ -54,6 +66,7 @@ export function App() {
         {tab === 'import' && <ImportView data={data} onChange={setData} onDone={() => openTab('transactions')} />}
         {tab === 'transactions' && <TransactionsView data={data} onChange={setData} initialFilter={txFilter} />}
         {tab === 'rules' && <RulesView data={data} onChange={setData} />}
+        {tab === 'account' && <AccountView sync={sync} />}
       </main>
     </div>
   );

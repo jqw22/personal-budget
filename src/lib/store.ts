@@ -11,7 +11,7 @@ const RENAMED_IN_V2: Record<string, string> = {
   Fees: 'Subscriptions',
 };
 
-// Saved in this browser for now. Encrypted storage on Nostr relays replaces this later.
+// This device's copy. When signed in with Nostr, an encrypted copy is also kept on relays (see useSync).
 const KEY = 'personal-budget:v1';
 
 export function emptyData(): BudgetData {
