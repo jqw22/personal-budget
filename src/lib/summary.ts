@@ -70,8 +70,8 @@ export function categoryHistory(transactions: Transaction[], endMonth: string, c
   const categories = new Set([...perMonth.flatMap((totals) => [...totals.keys()]), ...ytd.keys()]);
   const rows = [...categories]
     .map((category) => ({ category, amounts: perMonth.map((totals) => totals.get(category) ?? 0), ytd: ytd.get(category) ?? 0 }))
-    // Biggest spend in the latest month first, then across the year.
-    .sort((a, b) => b.amounts[count - 1] - a.amounts[count - 1] || b.ytd - a.ytd);
+    // Biggest spend this year so far first, then in the latest month.
+    .sort((a, b) => b.ytd - a.ytd || b.amounts[count - 1] - a.amounts[count - 1]);
   const incomeIn = (list: Transaction[]) => sum(list.filter((t) => t.category === 'Income').map((t) => t.amount));
   const income = months.map((m) => incomeIn(transactions.filter((t) => t.date.startsWith(m))));
   return {

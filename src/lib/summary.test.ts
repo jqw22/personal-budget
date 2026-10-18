@@ -34,6 +34,11 @@ describe('categoryHistory', () => {
     expect(h.ytd.months).toBe(3);
   });
 
+  it('puts the biggest spend this year first', () => {
+    const h = categoryHistory([tx('2026-01-10', -9000, 'Holidays'), ...transactions], '2026-06', 4);
+    expect(h.rows.map((r) => r.category)).toEqual(['Holidays', 'Going Out', 'Living/Food', 'Untagged']);
+  });
+
   it('covers the given number of months, oldest first, with totals', () => {
     const h = categoryHistory(transactions, '2026-06', 4);
     expect(h.months).toEqual(['2026-03', '2026-04', '2026-05', '2026-06']);
