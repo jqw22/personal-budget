@@ -11,6 +11,12 @@ export function previousMonth(month: string): string {
   return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
 }
 
+/** "2026-12" -> "2027-01" */
+export function nextMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+
 export function monthsWithData(transactions: Transaction[]): string[] {
   return [...new Set(transactions.map((t) => t.date.slice(0, 7)))].sort();
 }

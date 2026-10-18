@@ -26,6 +26,11 @@ export interface BudgetData {
   transactions: Transaction[];
   rules: Rule[];
   categories: string[];
+  /**
+   * Forecast amounts typed in by the user, in pence, by month ("2026-07") then
+   * row ("Income" or a spending category). Rows left out use the monthly average.
+   */
+  forecast?: Record<string, Record<string, number>>;
   /** Data format version, so saved data can be upgraded when defaults change. */
   version?: number;
 }

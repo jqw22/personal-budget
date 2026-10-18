@@ -104,6 +104,26 @@ describe('applyRemote', () => {
   });
 });
 
+describe('forecast sync', () => {
+  const forecast = { '2026-07': { Income: 200000, Holidays: 50000 } };
+
+  it('round-trips through chunks', () => {
+    expect(fromChunks(toChunks(data([tx('a', '2026-05-01')], { forecast })))!.forecast).toEqual(forecast);
+  });
+
+  it('merges figures from both devices, keeping this one where both set the same cell', () => {
+    const local = data([tx('a', '2026-05-01')], { forecast: { '2026-07': { Holidays: 1 } } });
+    const remote = data([], { forecast: { '2026-07': { Holidays: 2, Income: 3 }, '2026-08': { Income: 4 } } });
+    expect(mergeData(local, remote).forecast).toEqual({ '2026-07': { Holidays: 1, Income: 3 }, '2026-08': { Income: 4 } });
+  });
+
+  it("takes another device's newer figures", () => {
+    const saved = data([tx('a', '2026-05-01')], { forecast });
+    const theirs = toChunks({ ...saved, forecast: { '2026-07': { Income: 1 } } });
+    expect(applyRemote(saved, toChunks(saved), theirs).forecast).toEqual({ '2026-07': { Income: 1 } });
+  });
+});
+
 describe('latestByTag', () => {
   it('keeps the newest event per tag and ignores other apps', () => {
     const e = (d: string, created_at: number) => ({ id: d + created_at, pubkey: '', sig: '', kind: 30078, content: '', created_at, tags: [['d', d]] });

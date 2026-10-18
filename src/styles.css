@@ -432,3 +432,30 @@ code.nsec {
 table.summary .ytd-col {
   border-left: 2px solid var(--border);
 }
+
+input.forecast-input {
+  width: 6.5em;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: inherit;
+}
+
+input.forecast-input:hover,
+input.forecast-input:focus {
+  border-color: var(--accent);
+}
+
+input.forecast-input.edited {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+table.forecast td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}

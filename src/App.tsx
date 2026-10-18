@@ -72,6 +72,7 @@ export function App() {
         {tab === 'summary' && (
           <SummaryView
             data={data}
+            onChange={setData}
             onShowTransactions={(month, category) => {
               setTxFilter({ month, category: category ?? UNTAGGED_FILTER });
               setTab('transactions');
