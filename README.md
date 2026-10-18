@@ -2,7 +2,11 @@
 
 A web app for importing bank transactions, tagging spending by category and budgeting ahead, with data encrypted and stored on Nostr relays.
 
-## Running it
+## Using it
+
+Open https://jqw22.github.io/personal-budget/ in your browser. The page only hosts the app's code: CSVs you import are read and stored in your own browser, never uploaded.
+
+## Running it locally
 
 ```sh
 npm install
