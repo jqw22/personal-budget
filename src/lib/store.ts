@@ -1,18 +1,48 @@
 import { applyRules } from './rules';
 import { DEFAULT_CATEGORIES, type BudgetData, type Transaction } from './types';
 
+const VERSION = 2;
+
+/** Default categories renamed in version 2. */
+const RENAMED_IN_V2: Record<string, string> = {
+  Groceries: 'Living/Food',
+  Travel: 'Holidays',
+  'Eating out': 'Going Out',
+  Fees: 'Subscriptions',
+};
+
 // Saved in this browser for now. Encrypted storage on Nostr relays replaces this later.
 const KEY = 'personal-budget:v1';
 
 export function emptyData(): BudgetData {
-  return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES] };
+  return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], version: VERSION };
+}
+
+/** Renames a category everywhere it's used: the category list, rules and tagged transactions. */
+export function renameCategory(data: BudgetData, from: string, to: string): BudgetData {
+  const rename = (c: string) => (c === from ? to : c);
+  return {
+    ...data,
+    categories: [...new Set(data.categories.map(rename))],
+    rules: data.rules.map((r) => ({ ...r, category: rename(r.category) })),
+    transactions: data.transactions.map((t) => (t.category === from ? { ...t, category: to } : t)),
+  };
+}
+
+/** Upgrades data saved by an older version of the app. */
+export function migrate(data: BudgetData): BudgetData {
+  let next = data;
+  if ((next.version ?? 1) < 2) {
+    for (const [from, to] of Object.entries(RENAMED_IN_V2)) next = renameCategory(next, from, to);
+  }
+  return { ...next, version: VERSION };
 }
 
 export function loadData(): BudgetData {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return emptyData();
-    return { ...emptyData(), ...JSON.parse(raw) };
+    return migrate({ ...emptyData(), version: 1, ...JSON.parse(raw) });
   } catch {
     return emptyData();
   }
