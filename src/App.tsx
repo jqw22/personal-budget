@@ -22,7 +22,8 @@ export function App() {
 
   const sync = useSync(data, setData);
 
-  useEffect(() => saveData(data), [data]);
+  const [storageUsed, setStorageUsed] = useState<number | null>(0);
+  useEffect(() => setStorageUsed(saveData(data)), [data]);
 
   const untagged = data.transactions.filter((t) => !t.category).length;
 
@@ -53,6 +54,20 @@ export function App() {
           </button>
         </nav>
       </header>
+      {storageUsed === null ? (
+        <p className="warning">
+          This browser is out of space, so your latest changes weren't saved on this device.
+          {sync.signer ? ' They are still saved, encrypted, to your relays.' : ''} Download a CSV from Transactions to keep a
+          copy.
+        </p>
+      ) : (
+        storageUsed > 0.8 && (
+          <p className="warning">
+            This browser's storage for the app is about {Math.round(storageUsed * 100)}% full. Download a CSV from
+            Transactions to keep a copy before it runs out.
+          </p>
+        )
+      )}
       <main>
         {tab === 'summary' && (
           <SummaryView
