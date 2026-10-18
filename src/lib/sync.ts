@@ -1,7 +1,7 @@
 import type { Event } from 'nostr-tools';
 import { applyRules } from './rules';
 import { migrate } from './store';
-import type { BudgetData, Rule, Transaction } from './types';
+import { DEFAULT_CATEGORIES, type BudgetData, type Rule, type Transaction } from './types';
 
 /** NIP-78 application data: addressable events, one per `d` tag, each replacing the last. */
 export const KIND = 30078;
@@ -97,6 +97,14 @@ function pick(local: Transaction, remote: Transaction): Transaction {
   return rank(remote) > rank(local) ? remote : local;
 }
 
+function isUntouched(data: BudgetData): boolean {
+  return (
+    data.transactions.length === 0 &&
+    data.rules.length === 0 &&
+    data.categories.join('\n') === DEFAULT_CATEGORIES.join('\n')
+  );
+}
+
 /** Every category and rule from both sides; this device's rule wins where both match the same merchant. */
 function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
   const rules: Rule[] = [...local.rules];
@@ -111,6 +119,9 @@ function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
  * the relay copy was tagged by hand.
  */
 export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
+  // A device that has never been used only has the starting categories, so it takes the saved ones
+  // as they are rather than adding back defaults the user removed or renamed.
+  if (isUntouched(local)) return remote;
   const { categories, rules } = mergeSettings(local, remote);
   const byId = new Map(local.transactions.map((t) => [t.id, t]));
   for (const t of remote.transactions) {

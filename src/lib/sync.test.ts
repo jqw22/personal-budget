@@ -53,6 +53,11 @@ describe('mergeData', () => {
     ]);
   });
 
+  it("gives a device that's never been used exactly the saved categories", () => {
+    const remote = data([tx('a', '2026-05-01', 'Pets')], { categories: ['Pets', 'Bills'] });
+    expect(mergeData(emptyData(), remote).categories).toEqual(['Pets', 'Bills']);
+  });
+
   it('takes a hand-picked category from the relay copy over an untagged local one', () => {
     const merged = mergeData(data([tx('a', '2026-05-01')]), data([tx('a', '2026-05-01', 'Drinks')]));
     expect(merged.transactions[0].category).toBe('Drinks');
