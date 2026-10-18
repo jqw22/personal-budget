@@ -124,6 +124,14 @@ describe('forecast sync', () => {
   });
 });
 
+describe('category type sync', () => {
+  it('round-trips and combines essential categories from both devices', () => {
+    const saved = data([tx('a', '2026-05-01')], { essential: ['Rent & bills'] });
+    expect(fromChunks(toChunks(saved))!.essential).toEqual(['Rent & bills']);
+    expect(mergeData(data([tx('b', '2026-05-02')], { essential: ['Living/Food'] }), saved).essential).toEqual(['Living/Food', 'Rent & bills']);
+  });
+});
+
 describe('opening balance sync', () => {
   it('round-trips and reaches a device that has none', () => {
     const saved = data([tx('a', '2026-05-01')], { openingBalance: 265843 });

@@ -316,6 +316,12 @@ table.summary tr.section th {
   letter-spacing: 0.04em;
 }
 
+table.summary tr.section th.num {
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 table.summary tr.net-row th {
   border-top: 2px solid var(--border);
 }
@@ -462,4 +468,15 @@ input.forecast-input.edited {
 table.forecast td {
   padding-top: 4px;
   padding-bottom: 4px;
+}
+
+table.categories {
+  width: auto;
+  min-width: min(100%, 480px);
+}
+
+table.categories td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  vertical-align: middle;
 }

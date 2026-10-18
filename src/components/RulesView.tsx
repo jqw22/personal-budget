@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { applyRules } from '../lib/rules';
-import { emptyData, renameCategory, sortedCategories } from '../lib/store';
+import { emptyData, isEssential, renameCategory, sortedCategories } from '../lib/store';
+import { NOT_SPENDING } from '../lib/summary';
 import type { BudgetData, Rule } from '../lib/types';
+
+type CategoryType = 'essential' | 'discretionary';
 
 interface Props {
   data: BudgetData;
@@ -10,6 +13,7 @@ interface Props {
 
 export function RulesView({ data, onChange }: Props) {
   const [newCategory, setNewCategory] = useState('');
+  const [newType, setNewType] = useState<CategoryType | ''>('');
   const [confirmReset, setConfirmReset] = useState(false);
   const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
@@ -20,9 +24,15 @@ export function RulesView({ data, onChange }: Props) {
 
   function addCategory() {
     const name = newCategory.trim();
-    if (!name || data.categories.includes(name)) return;
-    onChange({ ...data, categories: [...data.categories, name] });
+    if (!name || !newType || data.categories.includes(name)) return;
+    onChange(setType({ ...data, categories: [...data.categories, name] }, name, newType));
     setNewCategory('');
+    setNewType('');
+  }
+
+  function setType(next: BudgetData, name: string, type: CategoryType): BudgetData {
+    const others = (next.essential ?? []).filter((c) => c !== name);
+    return { ...next, essential: type === 'essential' ? [...others, name] : others };
   }
 
   function finishRename() {
@@ -40,6 +50,7 @@ export function RulesView({ data, onChange }: Props) {
     onChange({
       ...data,
       categories: data.categories.filter((c) => c !== name),
+      essential: (data.essential ?? []).filter((c) => c !== name),
       rules,
       transactions: applyRules(transactions, rules),
     });
@@ -56,39 +67,65 @@ export function RulesView({ data, onChange }: Props) {
     <section>
       <h2>Categories</h2>
       <p className="muted">Click a category's name to rename it. Tagged transactions and rules follow the new name.</p>
-      <ul className="chips">
-        {categories.map((c) =>
-          editing?.from === c ? (
-            <li key={c}>
-              <input
-                autoFocus
-                aria-label={`Rename ${c}`}
-                value={editing.to}
-                onChange={(e) => setEditing({ from: c, to: e.target.value })}
-                onBlur={finishRename}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') finishRename();
-                  if (e.key === 'Escape') setEditing(null);
-                }}
-              />
-            </li>
-          ) : (
-            <li key={c}>
-              <button className="link name" title={`Rename ${c}`} onClick={() => setEditing({ from: c, to: c })}>
-                {c}
-              </button>
-              <span className="muted"> {counts.get(c) ?? 0}</span>
-              <button
-                className="link"
-                title={`Remove ${c}`}
-                onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
-              >
-                ×
-              </button>
-            </li>
-          ),
-        )}
-      </ul>
+      <table className="categories">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Type</th>
+            <th className="num">Transactions</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {categories.map((c) => (
+            <tr key={c}>
+              <td>
+                {editing?.from === c ? (
+                  <input
+                    autoFocus
+                    aria-label={`Rename ${c}`}
+                    value={editing.to}
+                    onChange={(e) => setEditing({ from: c, to: e.target.value })}
+                    onBlur={finishRename}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') finishRename();
+                      if (e.key === 'Escape') setEditing(null);
+                    }}
+                  />
+                ) : (
+                  <button className="link name" title={`Rename ${c}`} onClick={() => setEditing({ from: c, to: c })}>
+                    {c}
+                  </button>
+                )}
+              </td>
+              <td>
+                {NOT_SPENDING.includes(c) ? (
+                  <span className="muted">Not spending</span>
+                ) : (
+                  <select
+                    aria-label={`Type of ${c}`}
+                    value={isEssential(data, c) ? 'essential' : 'discretionary'}
+                    onChange={(e) => onChange(setType(data, c, e.target.value as CategoryType))}
+                  >
+                    <option value="essential">Essential</option>
+                    <option value="discretionary">Discretionary</option>
+                  </select>
+                )}
+              </td>
+              <td className="num muted">{counts.get(c) ?? 0}</td>
+              <td>
+                <button
+                  className="link"
+                  title={`Remove ${c}`}
+                  onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       {confirmRemove && (
         <div className="warning">
           <p>
@@ -119,7 +156,16 @@ export function RulesView({ data, onChange }: Props) {
         }}
       >
         <input placeholder="New category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
-        <button type="submit">Add</button>
+        <select aria-label="New category type" required value={newType} onChange={(e) => setNewType(e.target.value as CategoryType)}>
+          <option value="" disabled>
+            Type…
+          </option>
+          <option value="essential">Essential</option>
+          <option value="discretionary">Discretionary</option>
+        </select>
+        <button type="submit" disabled={!newCategory.trim() || !newType}>
+          Add
+        </button>
       </form>
 
       <h2>Merchant rules</h2>

@@ -96,3 +96,19 @@ export function closingBalances(transactions: Transaction[], opening: number, mo
     return transactions.reduce((balance, t) => (t.date < end ? balance + t.amount : balance), opening);
   });
 }
+
+export interface SpendingGroup<R> {
+  /** "Essential" or "Discretionary"; null for untagged spending, which is neither yet. */
+  label: string | null;
+  rows: R[];
+}
+
+/** Splits spending rows into essential, then discretionary, then untagged, keeping their order within each. */
+export function groupSpending<R extends { category: string }>(rows: R[], essential: string[]): SpendingGroup<R>[] {
+  const groups: SpendingGroup<R>[] = [
+    { label: 'Essential', rows: rows.filter((r) => essential.includes(r.category)) },
+    { label: 'Discretionary', rows: rows.filter((r) => r.category !== UNTAGGED && !essential.includes(r.category)) },
+    { label: null, rows: rows.filter((r) => r.category === UNTAGGED) },
+  ];
+  return groups.filter((g) => g.rows.length > 0);
+}
