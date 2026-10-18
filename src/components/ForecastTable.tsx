@@ -146,13 +146,7 @@ export function ForecastTable({ data, history, month, startBalance, onChange }: 
               <Fragment key={group.label ?? 'untagged'}>
                 {group.label && (
                   <tr className="section">
-                    <th>{group.label}</th>
-                    {months.map((m, i) => (
-                      <th key={m} className="num">
-                        {formatPounds(group.rows.reduce((total, r) => total + r.amounts[i], 0))}
-                      </th>
-                    ))}
-                    <th className="num ytd-col">{formatPounds(sum(group.rows.flatMap((r) => r.amounts)))}</th>
+                    <th colSpan={months.length + 2}>{group.label}</th>
                   </tr>
                 )}
                 {group.rows.map((r) => (
@@ -161,6 +155,17 @@ export function ForecastTable({ data, history, month, startBalance, onChange }: 
                     {cells(r.category, r.amounts)}
                   </tr>
                 ))}
+                {group.label && (
+                  <tr className="subtotal">
+                    <th>{group.label} total</th>
+                    {months.map((m, i) => (
+                      <th key={m} className="num">
+                        {formatPounds(group.rows.reduce((total, r) => total + r.amounts[i], 0))}
+                      </th>
+                    ))}
+                    <th className="num ytd-col">{formatPounds(sum(group.rows.flatMap((r) => r.amounts)))}</th>
+                  </tr>
+                )}
               </Fragment>
             ))}
           </tbody>

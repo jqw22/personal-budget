@@ -144,13 +144,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
                 <Fragment key={group.label ?? UNTAGGED}>
                   {group.label && (
                     <tr className="section">
-                      <th>{group.label}</th>
-                      {history.months.map((m, i) => (
-                        <th key={m} className="num">
-                          {withData.has(m) ? formatPounds(group.rows.reduce((total, r) => total + r.amounts[i], 0)) : '–'}
-                        </th>
-                      ))}
-                      {yearCells(group.rows.reduce((total, r) => total + r.ytd, 0), true)}
+                      <th colSpan={history.months.length + 3}>{group.label}</th>
                     </tr>
                   )}
                   {group.rows.map((r) => (
@@ -172,6 +166,17 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
                       {yearCells(r.ytd)}
                     </tr>
                   ))}
+                  {group.label && (
+                    <tr className="subtotal">
+                      <th>{group.label} total</th>
+                      {history.months.map((m, i) => (
+                        <th key={m} className="num">
+                          {withData.has(m) ? formatPounds(group.rows.reduce((total, r) => total + r.amounts[i], 0)) : '–'}
+                        </th>
+                      ))}
+                      {yearCells(group.rows.reduce((total, r) => total + r.ytd, 0), true)}
+                    </tr>
+                  )}
                 </Fragment>
               ))}
             </tbody>
