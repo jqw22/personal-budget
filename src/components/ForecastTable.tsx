@@ -9,6 +9,8 @@ interface Props {
   history: CategoryHistory;
   /** The month the summary shows; the forecast covers the months after it. */
   month: string;
+  /** The actual balance at the end of `month`, which forecast closing balances start from. Null when unknown. */
+  startBalance: number | null;
   onChange: (data: BudgetData) => void;
 }
 
@@ -69,7 +71,7 @@ function MoneyInput({
   );
 }
 
-export function ForecastTable({ data, history, month, onChange }: Props) {
+export function ForecastTable({ data, history, month, startBalance, onChange }: Props) {
   const months: string[] = [];
   for (let m = nextMonth(month); months.length < MONTHS_AHEAD; m = nextMonth(m)) months.push(m);
   // Whole pounds, so the totals add up to the figures shown.
@@ -93,6 +95,10 @@ export function ForecastTable({ data, history, month, onChange }: Props) {
   }));
   const totals = months.map((_, i) => rows.reduce((total, r) => total + r.amounts[i], 0));
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
+  const closing: number[] = [];
+  if (startBalance !== null) {
+    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? startBalance) + income[i] - totals[i]);
+  }
   const edited = months.some((m) => Object.keys(forecast[m] ?? {}).length > 0);
 
   const cells = (row: string, amounts: number[]) => (
@@ -113,7 +119,7 @@ export function ForecastTable({ data, history, month, onChange }: Props) {
 
   return (
     <>
-      <h2>Forecast</h2>
+      <h2>Forecast income and spend</h2>
       <p className="muted small">
         Starts from each row's monthly average. Type over any figure to change it, or clear a box to go back to the
         average.{edited && ' Figures you have typed in are shown in green.'}
@@ -164,6 +170,19 @@ export function ForecastTable({ data, history, month, onChange }: Props) {
                 </th>
               ))}
             </tr>
+            {closing.length > 0 && (
+              <tr className="balance-row">
+                <th title="Last month's actual closing balance plus each month's forecast under / over spend">
+                  Closing balance
+                </th>
+                {closing.map((balance, i) => (
+                  <th key={months[i]} className="num">
+                    {formatPounds(balance)}
+                  </th>
+                ))}
+                <th className="ytd-col" />
+              </tr>
+            )}
           </tfoot>
         </table>
       </div>

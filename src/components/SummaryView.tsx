@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatMoney, formatMonth, formatPounds } from '../lib/format';
-import { categoryHistory, monthsWithData, UNTAGGED } from '../lib/summary';
+import { categoryHistory, closingBalances, monthsWithData, UNTAGGED } from '../lib/summary';
+import { impliedOpeningBalance } from '../lib/export';
 import type { BudgetData } from '../lib/types';
 import { ForecastTable } from './ForecastTable';
 
@@ -50,6 +51,8 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const daysInMonth = new Date(y, m, 0).getDate();
   const partial = monthTransactions.length > 0 && (firstDay > 1 || lastDay < daysInMonth);
   const average = (amount: number) => (history?.ytd.months ? Math.round(amount / history.ytd.months) : 0);
+  const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
+  const closing = history && opening !== null ? closingBalances(data.transactions, opening, history.months) : null;
   const yearCells = (amount: number, header = false) => {
     const Cell = header ? 'th' : 'td';
     return (
@@ -97,7 +100,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         </p>
       )}
 
-      <h2>Income and spending</h2>
+      <h2>Actual income and spend</h2>
       {!history || history.rows.length === 0 ? (
         <p className="muted">No spending in these months.</p>
       ) : (
@@ -190,12 +193,24 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
                   ),
                 )}
               </tr>
+              {closing && (
+                <tr className="balance-row">
+                  <th title="Opening balance plus every transaction to the end of the month">Closing balance</th>
+                  {closing.map((balance, i) => (
+                    <th key={history.months[i]} className="num">
+                      {withData.has(history.months[i]) ? formatPounds(balance) : '–'}
+                    </th>
+                  ))}
+                  <th className="ytd-col" />
+                  <th />
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>
       )}
 
-      {history && history.rows.length > 0 && <ForecastTable data={data} history={history} month={month} onChange={onChange} />}
+      {history && history.rows.length > 0 && <ForecastTable data={data} history={history} month={month} startBalance={closing?.at(-1) ?? null} onChange={onChange} />}
     </section>
   );
 }
