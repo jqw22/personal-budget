@@ -15,9 +15,18 @@ const FIELDS: { key: keyof ColumnMapping; label: string; required?: boolean }[] 
   { key: 'description', label: 'Description', required: true },
   { key: 'moneyIn', label: 'Money in' },
   { key: 'moneyOut', label: 'Money out' },
-  { key: 'amount', label: 'Amount (signed)' },
-  { key: 'balance', label: 'Balance' },
 ];
+
+/**
+ * Columns are guessed from the file's headers. Balance isn't shown but is still
+ * read when present: it checks the file was read correctly and tells apart
+ * identical rows, so re-importing a statement keeps skipping duplicates.
+ * A single signed amount column is only used for banks without in and out columns.
+ */
+function initialMapping(headers: string[]): ColumnMapping {
+  const guess = guessMapping(headers);
+  return guess.moneyIn !== -1 || guess.moneyOut !== -1 ? { ...guess, amount: -1 } : guess;
+}
 
 export function ImportView({ data, onChange, onDone }: Props) {
   const [file, setFile] = useState<{ name: string; headers: string[]; rows: string[][] } | null>(null);
@@ -28,7 +37,7 @@ export function ImportView({ data, onChange, onDone }: Props) {
   async function pickFile(f: File) {
     const { headers, rows } = readCsv(await f.text());
     setFile({ name: f.name, headers, rows });
-    setMapping(guessMapping(headers));
+    setMapping(initialMapping(headers));
     setMessage(null);
   }
 
@@ -36,7 +45,7 @@ export function ImportView({ data, onChange, onDone }: Props) {
     if (!mapping) return null;
     if (mapping.date === -1 || mapping.description === -1) return 'Choose the date and description columns.';
     if (mapping.amount === -1 && mapping.moneyIn === -1 && mapping.moneyOut === -1)
-      return 'Choose either an amount column, or money in and money out columns.';
+      return 'Choose the money in and money out columns.';
     return null;
   }, [mapping]);
 
@@ -86,7 +95,14 @@ export function ImportView({ data, onChange, onDone }: Props) {
                 {label}
                 <select
                   value={mapping[key]}
-                  onChange={(e) => setMapping({ ...mapping, [key]: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setMapping({
+                      ...mapping,
+                      [key]: Number(e.target.value),
+                      // Choosing in or out columns means the file doesn't use one signed amount.
+                      ...(key === 'moneyIn' || key === 'moneyOut' ? { amount: -1 } : {}),
+                    })
+                  }
                 >
                   <option value={-1}>{required ? 'Choose…' : 'Not in file'}</option>
                   {file.headers.map((h, i) => (
