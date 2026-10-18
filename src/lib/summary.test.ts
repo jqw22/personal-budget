@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, closingBalances, groupSpending, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, dailyBalances, groupSpending, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -72,6 +72,26 @@ describe('groupSpending', () => {
       ['Essential', ['Rent & bills']],
       ['Discretionary', ['Going Out', 'Holidays']],
       [null, ['Untagged']],
+    ]);
+  });
+});
+
+describe('dailyBalances', () => {
+  it('gives the balance at the end of every day from the first transaction to the last', () => {
+    const list = [tx('2026-05-30', -500, null), tx('2026-05-30', -500, null), tx('2026-06-02', 2000, null)];
+    expect(dailyBalances(list, 10000, '2026')).toEqual([
+      { date: '2026-05-30', balance: 9000 },
+      { date: '2026-05-31', balance: 9000 },
+      { date: '2026-06-01', balance: 9000 },
+      { date: '2026-06-02', balance: 11000 },
+    ]);
+  });
+
+  it('carries in last year as the balance on 1 January', () => {
+    const list = [tx('2025-12-31', -500, null), tx('2026-01-02', -100, null)];
+    expect(dailyBalances(list, 1000, '2026')).toEqual([
+      { date: '2026-01-01', balance: 500 },
+      { date: '2026-01-02', balance: 400 },
     ]);
   });
 });

@@ -1,7 +1,8 @@
 import { Fragment, useMemo, useState } from 'react';
 import { formatMoney, formatMonth, formatPounds } from '../lib/format';
-import { categoryHistory, closingBalances, groupSpending, monthsWithData, UNTAGGED } from '../lib/summary';
+import { categoryHistory, closingBalances, dailyBalances, groupSpending, monthsWithData, UNTAGGED } from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
+import { BalanceChart } from './BalanceChart';
 import type { BudgetData } from '../lib/types';
 import { ForecastTable } from './ForecastTable';
 
@@ -232,6 +233,8 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
       )}
 
       {history && history.rows.length > 0 && <ForecastTable data={data} history={history} month={month} startBalance={closing?.at(-1) ?? null} onChange={onChange} />}
+
+      {opening !== null && <BalanceChart year={month.slice(0, 4)} days={dailyBalances(data.transactions, opening, month.slice(0, 4))} />}
     </section>
   );
 }
