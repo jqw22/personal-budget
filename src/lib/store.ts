@@ -1,7 +1,7 @@
 import { applyRules } from './rules';
 import { DEFAULT_CATEGORIES, type BudgetData, type Transaction } from './types';
 
-const VERSION = 2;
+const VERSION = 3;
 
 /** Default categories renamed in version 2. */
 const RENAMED_IN_V2: Record<string, string> = {
@@ -15,7 +15,7 @@ const RENAMED_IN_V2: Record<string, string> = {
 const KEY = 'personal-budget:v1';
 
 export function emptyData(): BudgetData {
-  return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], version: VERSION };
+  return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], essential: [], version: VERSION };
 }
 
 /** Categories in A to Z order, for showing in lists and dropdowns. */
@@ -23,15 +23,29 @@ export function sortedCategories(categories: string[]): string[] {
   return [...categories].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
 }
 
-/** Renames a category everywhere it's used: the category list, rules and tagged transactions. */
+/** Renames a category everywhere it's used: the category list, its type, rules, forecast figures and tagged transactions. */
 export function renameCategory(data: BudgetData, from: string, to: string): BudgetData {
   const rename = (c: string) => (c === from ? to : c);
+  const forecast = data.forecast
+    ? Object.fromEntries(
+        Object.entries(data.forecast).map(([month, rows]) => [
+          month,
+          Object.fromEntries(Object.entries(rows).map(([row, pence]) => [rename(row), pence])),
+        ]),
+      )
+    : undefined;
   return {
     ...data,
     categories: [...new Set(data.categories.map(rename))],
+    ...(data.essential ? { essential: [...new Set(data.essential.map(rename))] } : {}),
+    ...(forecast ? { forecast } : {}),
     rules: data.rules.map((r) => ({ ...r, category: rename(r.category) })),
     transactions: data.transactions.map((t) => (t.category === from ? { ...t, category: to } : t)),
   };
+}
+
+export function isEssential(data: BudgetData, category: string): boolean {
+  return data.essential?.includes(category) ?? false;
 }
 
 /** Upgrades data saved by an older version of the app. */
@@ -39,6 +53,17 @@ export function migrate(data: BudgetData): BudgetData {
   let next = data;
   if ((next.version ?? 1) < 2) {
     for (const [from, to] of Object.entries(RENAMED_IN_V2)) next = renameCategory(next, from, to);
+  }
+  if ((next.version ?? 1) < 3) {
+    // Before category types, essential categories were marked by ending their name with "*".
+    const essential = new Set(next.essential ?? []);
+    for (const c of next.categories) {
+      const name = c.replace(/\s*\*+\s*$/, '');
+      if (name === c || !name) continue;
+      if (!next.categories.includes(name)) next = renameCategory(next, c, name);
+      essential.add(name);
+    }
+    next = { ...next, essential: [...essential] };
   }
   return { ...next, version: VERSION };
 }

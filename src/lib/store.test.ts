@@ -15,7 +15,7 @@ const oldData: BudgetData = {
 describe('migrate', () => {
   it('moves data saved before version 2 onto the renamed categories', () => {
     const data = migrate(oldData);
-    expect(data.version).toBe(2);
+    expect(data.version).toBe(3);
     expect(data.categories).toEqual(['Living/Food', 'Going Out', 'Holidays', 'Subscriptions', 'Other']);
     expect(data.rules[0].category).toBe('Living/Food');
     expect(data.transactions.map((t) => t.category)).toEqual(['Living/Food', 'Subscriptions', 'Other', null]);
@@ -24,6 +24,22 @@ describe('migrate', () => {
   it('leaves data from version 2 alone, so a re-added "Groceries" stays', () => {
     const data = { ...oldData, version: 2 };
     expect(migrate(data).categories).toEqual(oldData.categories);
+  });
+
+  it('turns categories marked with * into essential ones and drops the *', () => {
+    const marked: BudgetData = {
+      version: 2,
+      categories: ['Rent & bills*', 'Living/Food *', 'Going Out'],
+      rules: [{ id: 'r1', match: 'TESCO', category: 'Living/Food *' }],
+      transactions: [tx('a', 'Rent & bills*'), tx('b', 'Going Out')],
+      forecast: { '2026-07': { 'Rent & bills*': 90000 } },
+    };
+    const data = migrate(marked);
+    expect(data.categories).toEqual(['Rent & bills', 'Living/Food', 'Going Out']);
+    expect(data.essential).toEqual(['Rent & bills', 'Living/Food']);
+    expect(data.rules[0].category).toBe('Living/Food');
+    expect(data.transactions[0].category).toBe('Rent & bills');
+    expect(data.forecast).toEqual({ '2026-07': { 'Rent & bills': 90000 } });
   });
 });
 

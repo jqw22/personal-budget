@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { formatPounds } from '../lib/format';
 import { parseMoney } from '../lib/importer';
-import { nextMonth, type CategoryHistory } from '../lib/summary';
+import { groupSpending, nextMonth, type CategoryHistory } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
 
 interface Props {
@@ -142,14 +142,26 @@ export function ForecastTable({ data, history, month, startBalance, onChange }: 
               <td>Income</td>
               {cells(INCOME, income)}
             </tr>
-            <tr className="section">
-              <th colSpan={months.length + 2}>Spending</th>
-            </tr>
-            {rows.map((r) => (
-              <tr key={r.category}>
-                <td>{r.category}</td>
-                {cells(r.category, r.amounts)}
-              </tr>
+            {groupSpending(rows, data.essential ?? []).map((group) => (
+              <Fragment key={group.label ?? 'untagged'}>
+                {group.label && (
+                  <tr className="section">
+                    <th>{group.label}</th>
+                    {months.map((m, i) => (
+                      <th key={m} className="num">
+                        {formatPounds(group.rows.reduce((total, r) => total + r.amounts[i], 0))}
+                      </th>
+                    ))}
+                    <th className="num ytd-col">{formatPounds(sum(group.rows.flatMap((r) => r.amounts)))}</th>
+                  </tr>
+                )}
+                {group.rows.map((r) => (
+                  <tr key={r.category} className={group.label ? '' : 'untagged'}>
+                    <td>{r.category}</td>
+                    {cells(r.category, r.amounts)}
+                  </tr>
+                ))}
+              </Fragment>
             ))}
           </tbody>
           <tfoot>

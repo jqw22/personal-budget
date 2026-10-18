@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { formatMoney, formatMonth, formatPounds } from '../lib/format';
-import { categoryHistory, closingBalances, monthsWithData, UNTAGGED } from '../lib/summary';
+import { categoryHistory, closingBalances, groupSpending, monthsWithData, UNTAGGED } from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
 import type { BudgetData } from '../lib/types';
 import { ForecastTable } from './ForecastTable';
@@ -140,30 +140,40 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
                 ))}
                 {yearCells(history.ytd.income)}
               </tr>
-              <tr className="section">
-                <th colSpan={history.months.length + 3}>Spending</th>
-              </tr>
-              {history.rows.map((r) => {
-                return (
-                  <tr key={r.category} className={r.category === UNTAGGED ? 'untagged' : ''}>
-                    <td>
-                      <button
-                        className="link name"
-                        title={`See ${r.category} transactions`}
-                        onClick={() => onShowTransactions(month, r.category === UNTAGGED ? null : r.category)}
-                      >
-                        {r.category}
-                      </button>
-                    </td>
-                    {r.amounts.map((amount, i) => (
-                      <td key={history.months[i]} className={`num ${i < r.amounts.length - 1 ? 'muted' : ''}`}>
-                        {withData.has(history.months[i]) ? formatPounds(amount) : '–'}
+              {groupSpending(history.rows, data.essential ?? []).map((group) => (
+                <Fragment key={group.label ?? UNTAGGED}>
+                  {group.label && (
+                    <tr className="section">
+                      <th>{group.label}</th>
+                      {history.months.map((m, i) => (
+                        <th key={m} className="num">
+                          {withData.has(m) ? formatPounds(group.rows.reduce((total, r) => total + r.amounts[i], 0)) : '–'}
+                        </th>
+                      ))}
+                      {yearCells(group.rows.reduce((total, r) => total + r.ytd, 0), true)}
+                    </tr>
+                  )}
+                  {group.rows.map((r) => (
+                    <tr key={r.category} className={r.category === UNTAGGED ? 'untagged' : ''}>
+                      <td>
+                        <button
+                          className="link name"
+                          title={`See ${r.category} transactions`}
+                          onClick={() => onShowTransactions(month, r.category === UNTAGGED ? null : r.category)}
+                        >
+                          {r.category}
+                        </button>
                       </td>
-                    ))}
-                    {yearCells(r.ytd)}
-                  </tr>
-                );
-              })}
+                      {r.amounts.map((amount, i) => (
+                        <td key={history.months[i]} className={`num ${i < r.amounts.length - 1 ? 'muted' : ''}`}>
+                          {withData.has(history.months[i]) ? formatPounds(amount) : '–'}
+                        </td>
+                      ))}
+                      {yearCells(r.ytd)}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
             </tbody>
             <tfoot>
               <tr>

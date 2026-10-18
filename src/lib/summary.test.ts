@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, closingBalances, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, groupSpending, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -62,5 +62,16 @@ describe('closingBalances', () => {
   it('adds every transaction up to the end of each month onto the opening balance', () => {
     const list = [tx('2026-05-03', -2000, null), tx('2026-05-31', 50000, 'Income'), tx('2026-06-01', -1000, 'Transfers')];
     expect(closingBalances(list, 10000, ['2026-04', '2026-05', '2026-06'])).toEqual([10000, 58000, 57000]);
+  });
+});
+
+describe('groupSpending', () => {
+  it('puts essential rows first, then discretionary, then untagged', () => {
+    const rows = [{ category: 'Going Out' }, { category: 'Untagged' }, { category: 'Rent & bills' }, { category: 'Holidays' }];
+    expect(groupSpending(rows, ['Rent & bills']).map((g) => [g.label, g.rows.map((r) => r.category)])).toEqual([
+      ['Essential', ['Rent & bills']],
+      ['Discretionary', ['Going Out', 'Holidays']],
+      [null, ['Untagged']],
+    ]);
   });
 });
