@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, previousMonth } from './summary';
+import { categoryHistory, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -24,6 +24,11 @@ describe('previousMonth', () => {
   it('steps back a month, across years too', () => {
     expect(previousMonth('2026-06')).toBe('2026-05');
     expect(previousMonth('2026-01')).toBe('2025-12');
+  });
+
+  it('steps forward a month, across years too', () => {
+    expect(nextMonth('2026-06')).toBe('2026-07');
+    expect(nextMonth('2026-12')).toBe('2027-01');
   });
 });
 

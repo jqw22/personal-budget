@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import { formatMoney, formatMonth } from '../lib/format';
 import { categoryHistory, monthsWithData, UNTAGGED } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
+import { ForecastTable } from './ForecastTable';
 
 interface Props {
   data: BudgetData;
   /** Opens the transactions for a month and category; null means untagged. */
   onShowTransactions: (month: string, category: string | null) => void;
+  onChange: (data: BudgetData) => void;
 }
 
 /** How many months the category table shows, ending at the chosen month. */
@@ -21,7 +23,7 @@ function shortMonth(month: string): string {
   return new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' });
 }
 
-export function SummaryView({ data, onShowTransactions }: Props) {
+export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const months = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
   const [month, setMonth] = useState(() => months.at(-1) ?? '');
   const history = useMemo(() => (month ? categoryHistory(data.transactions, month, MONTHS_SHOWN) : null), [
@@ -192,6 +194,8 @@ export function SummaryView({ data, onShowTransactions }: Props) {
           </table>
         </div>
       )}
+
+      {history && history.rows.length > 0 && <ForecastTable data={data} history={history} month={month} onChange={onChange} />}
     </section>
   );
 }
