@@ -5,23 +5,6 @@ export const NOT_SPENDING = ['Transfers', 'Income'];
 
 export const UNTAGGED = 'Untagged';
 
-export interface CategoryLine {
-  category: string;
-  /** Spent this month, in pence. Refunds tagged to the category reduce it. */
-  spent: number;
-  /** Spent in the month before, in pence. */
-  previous: number;
-}
-
-export interface MonthSummary {
-  month: string;
-  previousMonth: string;
-  spent: number;
-  previousSpent: number;
-  income: number;
-  lines: CategoryLine[];
-}
-
 /** "2026-06" -> "2026-05" */
 export function previousMonth(month: string): string {
   const [y, m] = month.split('-').map(Number);
@@ -52,29 +35,6 @@ function sum(values: Iterable<number>): number {
   let total = 0;
   for (const v of values) total += v;
   return total;
-}
-
-export function summarise(transactions: Transaction[], month: string): MonthSummary {
-  const prev = previousMonth(month);
-  const current = spendingByCategory(transactions, month);
-  const before = spendingByCategory(transactions, prev);
-
-  const lines = [...new Set([...current.keys(), ...before.keys()])]
-    .map((category) => ({ category, spent: current.get(category) ?? 0, previous: before.get(category) ?? 0 }))
-    .sort((a, b) => b.spent - a.spent || b.previous - a.previous);
-
-  const income = sum(
-    transactions.filter((t) => t.date.startsWith(month) && t.category === 'Income').map((t) => t.amount),
-  );
-
-  return {
-    month,
-    previousMonth: prev,
-    spent: sum(current.values()),
-    previousSpent: sum(before.values()),
-    income,
-    lines,
-  };
 }
 
 export interface CategoryHistory {

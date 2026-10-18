@@ -287,36 +287,6 @@ form.inline {
   margin-bottom: 16px;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.stat {
-  padding: 12px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.stat .label {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.stat .value {
-  font-size: 1.6rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  margin: 2px 0;
-}
-
-.stat .sub {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
 .up {
   color: var(--warn-text);
 }
@@ -382,10 +352,6 @@ table.summary tfoot th {
     flex-wrap: wrap;
   }
 
-  table.summary .change-col {
-    display: none;
-  }
-
   .transactions .nowrap {
     white-space: normal;
     font-size: 0.85rem;
@@ -395,4 +361,11 @@ table.summary tfoot th {
   td {
     padding: 6px 4px;
   }
+}
+
+button.link.sort {
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
 }

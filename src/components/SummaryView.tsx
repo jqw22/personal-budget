@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { formatMoney, formatMonth } from '../lib/format';
-import { categoryHistory, monthsWithData, NOT_SPENDING, summarise, UNTAGGED } from '../lib/summary';
+import { categoryHistory, monthsWithData, UNTAGGED } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
 
 interface Props {
@@ -16,23 +16,9 @@ function shortMonth(month: string): string {
   return new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' });
 }
 
-function Change({ now, before }: { now: number; before: number }) {
-  if (before === 0) return <span className="muted">{now === 0 ? '' : 'new'}</span>;
-  const diff = now - before;
-  if (diff === 0) return <span className="muted">same</span>;
-  const pct = Math.round((Math.abs(diff) / Math.abs(before)) * 100);
-  // Spending more reads as a warning, spending less as good news.
-  return (
-    <span className={diff > 0 ? 'up' : 'down'} title={`${diff > 0 ? '+' : '−'}${formatMoney(Math.abs(diff))}`}>
-      {diff > 0 ? '▲' : '▼'} {pct}%
-    </span>
-  );
-}
-
 export function SummaryView({ data, onShowTransactions }: Props) {
   const months = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
   const [month, setMonth] = useState(() => months.at(-1) ?? '');
-  const summary = useMemo(() => summarise(data.transactions, month), [data.transactions, month]);
   const history = useMemo(() => (month ? categoryHistory(data.transactions, month, MONTHS_SHOWN) : null), [
     data.transactions,
     month,
@@ -48,9 +34,8 @@ export function SummaryView({ data, onShowTransactions }: Props) {
   }
 
   const index = months.indexOf(month);
-  const hasPrevious = months.includes(summary.previousMonth);
   const withData = new Set(months);
-  const untagged = summary.lines.find((l) => l.category === UNTAGGED);
+  const untaggedSpent = history?.rows.find((r) => r.category === UNTAGGED)?.amounts.at(-1) ?? 0;
   const monthTransactions = data.transactions.filter((t) => t.date.startsWith(month));
   const firstDay = Number(monthTransactions[0]?.date.slice(8));
   const lastDay = Number(monthTransactions.at(-1)?.date.slice(8));
@@ -80,43 +65,15 @@ export function SummaryView({ data, onShowTransactions }: Props) {
         </button>
       </div>
 
-      <div className="stats">
-        <div className="stat">
-          <div className="label">Income</div>
-          <div className="value">{formatMoney(summary.income)}</div>
-          <div className="sub">Tagged as Income</div>
-        </div>
-        <div className="stat">
-          <div className="label">Spent</div>
-          <div className="value">{formatMoney(summary.spent)}</div>
-          <div className="sub">
-            {hasPrevious ? (
-              <>
-                <Change now={summary.spent} before={summary.previousSpent} /> vs {formatMonth(summary.previousMonth)}
-              </>
-            ) : (
-              `No statements for ${formatMonth(summary.previousMonth)}`
-            )}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="label">{summary.income - summary.spent >= 0 ? 'Underspent' : 'Overspent'}</div>
-          <div className={`value ${summary.income - summary.spent >= 0 ? 'down' : 'up'}`}>
-            {formatMoney(Math.abs(summary.income - summary.spent))}
-          </div>
-          <div className="sub">Income minus spending</div>
-        </div>
-      </div>
-
       {partial && (
         <p className="muted small">
           Only covers {firstDay}–{lastDay} {formatMonth(month)}, from the statements imported so far.
         </p>
       )}
 
-      {untagged && untagged.spent > 0 && (
+      {untaggedSpent > 0 && (
         <p className="warning">
-          {formatMoney(untagged.spent)} this month isn't tagged yet.{' '}
+          {formatMoney(untaggedSpent)} this month isn't tagged yet.{' '}
           <button className="link inline-link" onClick={() => onShowTransactions(month, null)}>
             Tag it now
           </button>
@@ -137,7 +94,6 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                     {shortMonth(m)}
                   </th>
                 ))}
-                <th className="num change-col">Change</th>
               </tr>
             </thead>
             <tbody>
@@ -156,13 +112,11 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                     {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
                   </td>
                 ))}
-                <td className="change-col" />
               </tr>
               <tr className="section">
-                <th colSpan={history.months.length + 2}>Spending</th>
+                <th colSpan={history.months.length + 1}>Spending</th>
               </tr>
               {history.rows.map((r) => {
-                const [before, now] = r.amounts.slice(-2);
                 return (
                   <tr key={r.category} className={r.category === UNTAGGED ? 'untagged' : ''}>
                     <td>
@@ -179,7 +133,6 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                         {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
                       </td>
                     ))}
-                    <td className="num change-col">{hasPrevious && <Change now={now} before={before} />}</td>
                   </tr>
                 );
               })}
@@ -192,9 +145,6 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                     {withData.has(history.months[i]) ? formatMoney(total) : '–'}
                   </th>
                 ))}
-                <th className="num change-col">
-                  {hasPrevious && <Change now={history.totals.at(-1)!} before={history.totals.at(-2)!} />}
-                </th>
               </tr>
               <tr className="net-row">
                 <th>Under / over spend</th>
@@ -206,16 +156,11 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                     </th>
                   );
                 })}
-                <th className="change-col" />
               </tr>
             </tfoot>
           </table>
         </div>
       )}
-      <p className="muted small">
-        {NOT_SPENDING.join(' and ')} aren't counted as spending. Under / over spend is income minus spending: + means you
-        spent less than came in. A dash means no statements imported for that month.
-      </p>
     </section>
   );
 }

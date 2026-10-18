@@ -19,6 +19,11 @@ export interface TransactionFilter {
   category: string;
 }
 
+/** Newest first, biggest money out first, or biggest money in first. */
+type Sort = 'date' | 'amount-out' | 'amount-in';
+
+const NEXT_AMOUNT_SORT: Record<Sort, Sort> = { date: 'amount-out', 'amount-out': 'amount-in', 'amount-in': 'date' };
+
 export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const months = useMemo(
     () => [...new Set(data.transactions.map((t) => t.date.slice(0, 7)))].sort().reverse(),
@@ -28,6 +33,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const [category, setCategory] = useState<string>(initialFilter?.category ?? 'all');
   const [remember, setRemember] = useState(true);
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<Sort>('date');
 
   const shown = data.transactions
     .filter((t) => month === 'all' || t.date.startsWith(month))
@@ -35,6 +41,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
     .filter((t) => !search || t.description.toLowerCase().includes(search.toLowerCase()))
     .slice()
     .reverse();
+  if (sort !== 'date') shown.sort((a, b) => (sort === 'amount-out' ? a.amount - b.amount : b.amount - a.amount));
 
   function tag(t: Transaction, category: string) {
     if (!category) {
@@ -107,9 +114,23 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
         <table className="transactions">
           <thead>
             <tr>
-              <th>Date</th>
+              <th aria-sort={sort === 'date' ? 'descending' : undefined}>
+                <button className="link sort" title="Sort by date, newest first" onClick={() => setSort('date')}>
+                  Date{sort === 'date' && ' ▼'}
+                </button>
+              </th>
               <th>Merchant</th>
-              <th className="num">Amount</th>
+              <th className="num" aria-sort={sort === 'date' ? undefined : sort === 'amount-out' ? 'ascending' : 'descending'}>
+                <button
+                  className="link sort"
+                  title={
+                    sort === 'amount-out' ? 'Sort with biggest money in first' : sort === 'amount-in' ? 'Sort by date' : 'Sort with biggest spend first'
+                  }
+                  onClick={() => setSort(NEXT_AMOUNT_SORT[sort])}
+                >
+                  Amount{sort === 'amount-out' ? ' ▼' : sort === 'amount-in' ? ' ▲' : ''}
+                </button>
+              </th>
               <th>Category</th>
             </tr>
           </thead>
