@@ -301,6 +301,29 @@ button.link.inline-link {
   text-decoration: underline;
 }
 
+/*
+ * Fixed widths: the category column takes 22% and every figure column 13%, in
+ * both tables, so the forecast's columns line up under the actual table's.
+ * The forecast has one figure column fewer, so it is 13% narrower.
+ */
+table.summary {
+  table-layout: fixed;
+  min-width: 700px;
+}
+
+table.summary col {
+  width: 13%;
+}
+
+table.summary col.category-col {
+  width: 22%;
+}
+
+table.summary.forecast {
+  width: 87%;
+  min-width: 609px;
+}
+
 table.summary td {
   vertical-align: middle;
 }
