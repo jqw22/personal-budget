@@ -26,20 +26,22 @@ export interface BudgetData {
   transactions: Transaction[];
   rules: Rule[];
   categories: string[];
+  /** Data format version, so saved data can be upgraded when defaults change. */
+  version?: number;
 }
 
 export const DEFAULT_CATEGORIES = [
-  'Groceries',
-  'Eating out',
+  'Living/Food',
+  'Going Out',
   'Drinks',
   'Transport',
-  'Travel',
+  'Holidays',
   'Shopping',
   'Health & beauty',
   'Rent & bills',
   'Entertainment',
   'Gifts & donations',
-  'Fees',
+  'Subscriptions',
   'Transfers',
   'Income',
   'Other',

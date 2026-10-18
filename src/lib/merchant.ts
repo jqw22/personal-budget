@@ -1,6 +1,6 @@
 /**
  * Reduces a raw bank description to a short payee name, so that one rule
- * ("TESCO STORES" -> Groceries) matches every visit regardless of store
+ * ("TESCO STORES" -> Living/Food) matches every visit regardless of store
  * number, payment method or date.
  */
 export function merchantName(description: string): string {

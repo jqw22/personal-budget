@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { applyRules } from '../lib/rules';
-import { emptyData } from '../lib/store';
+import { emptyData, renameCategory } from '../lib/store';
 import type { BudgetData, Rule } from '../lib/types';
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
 export function RulesView({ data, onChange }: Props) {
   const [newCategory, setNewCategory] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
+  const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
 
   function setRules(rules: Rule[]) {
     onChange({ ...data, rules, transactions: applyRules(data.transactions, rules) });
@@ -21,6 +22,13 @@ export function RulesView({ data, onChange }: Props) {
     if (!name || data.categories.includes(name)) return;
     onChange({ ...data, categories: [...data.categories, name] });
     setNewCategory('');
+  }
+
+  function finishRename() {
+    if (!editing) return;
+    const to = editing.to.trim();
+    if (to && to !== editing.from && !data.categories.includes(to)) onChange(renameCategory(data, editing.from, to));
+    setEditing(null);
   }
 
   function removeCategory(name: string) {
@@ -42,16 +50,35 @@ export function RulesView({ data, onChange }: Props) {
   return (
     <section>
       <h2>Categories</h2>
+      <p className="muted">Click a category's name to rename it. Tagged transactions and rules follow the new name.</p>
       <ul className="chips">
-        {data.categories.map((c) => (
-          <li key={c}>
-            {c}
-            <span className="muted"> {counts.get(c) ?? 0}</span>
-            <button className="link" title={`Remove ${c}`} onClick={() => removeCategory(c)}>
-              ×
-            </button>
-          </li>
-        ))}
+        {data.categories.map((c) =>
+          editing?.from === c ? (
+            <li key={c}>
+              <input
+                autoFocus
+                aria-label={`Rename ${c}`}
+                value={editing.to}
+                onChange={(e) => setEditing({ from: c, to: e.target.value })}
+                onBlur={finishRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') finishRename();
+                  if (e.key === 'Escape') setEditing(null);
+                }}
+              />
+            </li>
+          ) : (
+            <li key={c}>
+              <button className="link name" title={`Rename ${c}`} onClick={() => setEditing({ from: c, to: c })}>
+                {c}
+              </button>
+              <span className="muted"> {counts.get(c) ?? 0}</span>
+              <button className="link" title={`Remove ${c}`} onClick={() => removeCategory(c)}>
+                ×
+              </button>
+            </li>
+          ),
+        )}
       </ul>
       <form
         className="inline"

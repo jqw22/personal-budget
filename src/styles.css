@@ -127,6 +127,11 @@ button.link {
   color: var(--muted);
 }
 
+button.link.name {
+  padding: 0;
+  color: inherit;
+}
+
 button.danger {
   color: var(--danger);
   border-color: var(--danger);
