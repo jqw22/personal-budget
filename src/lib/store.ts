@@ -18,6 +18,11 @@ export function emptyData(): BudgetData {
   return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], version: VERSION };
 }
 
+/** Categories in A to Z order, for showing in lists and dropdowns. */
+export function sortedCategories(categories: string[]): string[] {
+  return [...categories].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+}
+
 /** Renames a category everywhere it's used: the category list, rules and tagged transactions. */
 export function renameCategory(data: BudgetData, from: string, to: string): BudgetData {
   const rename = (c: string) => (c === from ? to : c);

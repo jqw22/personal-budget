@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, upsertRule } from '../lib/rules';
+import { sortedCategories } from '../lib/store';
 import type { BudgetData, Transaction } from '../lib/types';
 
 interface Props {
@@ -73,6 +74,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   }
 
   const untagged = data.transactions.filter((t) => !t.category).length;
+  const categories = sortedCategories(data.categories);
 
   return (
     <section>
@@ -92,7 +94,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
         <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">
           <option value="all">All categories</option>
           <option value={UNTAGGED_FILTER}>Untagged</option>
-          {data.categories.map((c) => (
+          {categories.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -146,7 +148,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                 <td>
                   <select value={t.category ?? ''} onChange={(e) => tag(t, e.target.value)}>
                     <option value="">Untagged</option>
-                    {data.categories.map((c) => (
+                    {categories.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>

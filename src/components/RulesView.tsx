@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { applyRules } from '../lib/rules';
-import { emptyData, renameCategory } from '../lib/store';
+import { emptyData, renameCategory, sortedCategories } from '../lib/store';
 import type { BudgetData, Rule } from '../lib/types';
 
 interface Props {
@@ -12,6 +12,7 @@ export function RulesView({ data, onChange }: Props) {
   const [newCategory, setNewCategory] = useState('');
   const [confirmReset, setConfirmReset] = useState(false);
   const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
 
   function setRules(rules: Rule[]) {
     onChange({ ...data, rules, transactions: applyRules(data.transactions, rules) });
@@ -44,15 +45,19 @@ export function RulesView({ data, onChange }: Props) {
     });
   }
 
+  const categories = sortedCategories(data.categories);
   const counts = new Map<string, number>();
   for (const t of data.transactions) if (t.category) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
+  const rulesFor = (c: string) => data.rules.filter((r) => r.category === c).length;
+  const inUse = (c: string) => (counts.get(c) ?? 0) > 0 || rulesFor(c) > 0;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
   return (
     <section>
       <h2>Categories</h2>
       <p className="muted">Click a category's name to rename it. Tagged transactions and rules follow the new name.</p>
       <ul className="chips">
-        {data.categories.map((c) =>
+        {categories.map((c) =>
           editing?.from === c ? (
             <li key={c}>
               <input
@@ -73,13 +78,39 @@ export function RulesView({ data, onChange }: Props) {
                 {c}
               </button>
               <span className="muted"> {counts.get(c) ?? 0}</span>
-              <button className="link" title={`Remove ${c}`} onClick={() => removeCategory(c)}>
+              <button
+                className="link"
+                title={`Remove ${c}`}
+                onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
+              >
                 ×
               </button>
             </li>
           ),
         )}
       </ul>
+      {confirmRemove && (
+        <div className="warning">
+          <p>
+            <strong>{confirmRemove}</strong> is used by {plural(counts.get(confirmRemove) ?? 0, 'transaction')}
+            {rulesFor(confirmRemove) > 0 && ` and ${plural(rulesFor(confirmRemove), 'merchant rule')}`}. Removing it
+            leaves those transactions untagged
+            {rulesFor(confirmRemove) > 0 && ` and deletes the rule${rulesFor(confirmRemove) === 1 ? '' : 's'}`}.
+          </p>
+          <div className="actions">
+            <button
+              className="danger"
+              onClick={() => {
+                removeCategory(confirmRemove);
+                setConfirmRemove(null);
+              }}
+            >
+              Remove {confirmRemove}
+            </button>
+            <button onClick={() => setConfirmRemove(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
       <form
         className="inline"
         onSubmit={(e) => {
@@ -127,7 +158,7 @@ export function RulesView({ data, onChange }: Props) {
                         setRules(data.rules.map((x) => (x.id === r.id ? { ...x, category: e.target.value } : x)))
                       }
                     >
-                      {data.categories.map((c) => (
+                      {categories.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
