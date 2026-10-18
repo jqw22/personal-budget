@@ -4,3 +4,4 @@ dist/
 # Never commit real bank statements
 *.csv
 !src/**/__fixtures__/*.csv
+*.tsbuildinfo
