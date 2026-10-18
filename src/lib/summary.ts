@@ -40,26 +40,45 @@ function sum(values: Iterable<number>): number {
 export interface CategoryHistory {
   /** The months covered, oldest first. */
   months: string[];
-  /** Spending per category, one amount per month, in pence. */
-  rows: { category: string; amounts: number[] }[];
+  /** Spending per category, one amount per month, and for the calendar year so far, in pence. */
+  rows: { category: string; amounts: number[]; ytd: number }[];
   /** Total spending per month, in pence. */
   totals: number[];
   /** Money tagged as Income per month, in pence. */
   income: number[];
+  /** Calendar year to date, up to and including the last month shown. */
+  ytd: {
+    /** Months this year with any transactions, which the monthly averages divide by. */
+    months: number;
+    total: number;
+    income: number;
+  };
 }
 
-/** Spending per category for `count` months ending at `endMonth`, oldest month first. */
+/** Spending per category for `count` months ending at `endMonth`, oldest month first, plus the year so far. */
 export function categoryHistory(transactions: Transaction[], endMonth: string, count: number): CategoryHistory {
   const months = [endMonth];
   while (months.length < count) months.unshift(previousMonth(months[0]));
   const perMonth = months.map((m) => spendingByCategory(transactions, m));
-  const categories = new Set(perMonth.flatMap((totals) => [...totals.keys()]));
+
+  const year = endMonth.slice(0, 4);
+  const thisYear = transactions.filter((t) => t.date.startsWith(year) && t.date.slice(0, 7) <= endMonth);
+  const ytdMonths = new Set(thisYear.map((t) => t.date.slice(0, 7)));
+  const ytd = new Map<string, number>();
+  for (const m of ytdMonths) for (const [c, v] of spendingByCategory(thisYear, m)) ytd.set(c, (ytd.get(c) ?? 0) + v);
+
+  const categories = new Set([...perMonth.flatMap((totals) => [...totals.keys()]), ...ytd.keys()]);
   const rows = [...categories]
-    .map((category) => ({ category, amounts: perMonth.map((totals) => totals.get(category) ?? 0) }))
-    // Biggest spend in the latest month first, then across the whole period.
-    .sort((a, b) => b.amounts[count - 1] - a.amounts[count - 1] || sum(b.amounts) - sum(a.amounts));
-  const income = months.map((m) =>
-    sum(transactions.filter((t) => t.date.startsWith(m) && t.category === 'Income').map((t) => t.amount)),
-  );
-  return { months, rows, totals: perMonth.map((totals) => sum(totals.values())), income };
+    .map((category) => ({ category, amounts: perMonth.map((totals) => totals.get(category) ?? 0), ytd: ytd.get(category) ?? 0 }))
+    // Biggest spend in the latest month first, then across the year.
+    .sort((a, b) => b.amounts[count - 1] - a.amounts[count - 1] || b.ytd - a.ytd);
+  const incomeIn = (list: Transaction[]) => sum(list.filter((t) => t.category === 'Income').map((t) => t.amount));
+  const income = months.map((m) => incomeIn(transactions.filter((t) => t.date.startsWith(m))));
+  return {
+    months,
+    rows,
+    totals: perMonth.map((totals) => sum(totals.values())),
+    income,
+    ytd: { months: ytdMonths.size, total: sum(ytd.values()), income: incomeIn(thisYear) },
+  };
 }

@@ -12,6 +12,11 @@ interface Props {
 /** How many months the category table shows, ending at the chosen month. */
 const MONTHS_SHOWN = 4;
 
+/** Signed money for the under / over spend line. */
+function net(amount: number): string {
+  return `${amount >= 0 ? '+' : '−'}${formatMoney(Math.abs(amount))}`;
+}
+
 function shortMonth(month: string): string {
   return new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' });
 }
@@ -42,6 +47,16 @@ export function SummaryView({ data, onShowTransactions }: Props) {
   const [y, m] = month.split('-').map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
   const partial = monthTransactions.length > 0 && (firstDay > 1 || lastDay < daysInMonth);
+  const average = (amount: number) => (history?.ytd.months ? Math.round(amount / history.ytd.months) : 0);
+  const yearCells = (amount: number, header = false) => {
+    const Cell = header ? 'th' : 'td';
+    return (
+      <>
+        <Cell className="num ytd-col">{formatMoney(amount)}</Cell>
+        <Cell className="num">{formatMoney(average(amount))}</Cell>
+      </>
+    );
+  };
 
   return (
     <section>
@@ -94,6 +109,12 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                     {shortMonth(m)}
                   </th>
                 ))}
+                <th className="num ytd-col" title={`January to ${formatMonth(month)}`}>
+                  {month.slice(0, 4)} so far
+                </th>
+                <th className="num" title={`Year so far divided by ${history.ytd.months} month${history.ytd.months === 1 ? '' : 's'} with data`}>
+                  Monthly avg
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -112,9 +133,10 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                     {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
                   </td>
                 ))}
+                {yearCells(history.ytd.income)}
               </tr>
               <tr className="section">
-                <th colSpan={history.months.length + 1}>Spending</th>
+                <th colSpan={history.months.length + 3}>Spending</th>
               </tr>
               {history.rows.map((r) => {
                 return (
@@ -133,6 +155,7 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                         {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
                       </td>
                     ))}
+                    {yearCells(r.ytd)}
                   </tr>
                 );
               })}
@@ -145,17 +168,25 @@ export function SummaryView({ data, onShowTransactions }: Props) {
                     {withData.has(history.months[i]) ? formatMoney(total) : '–'}
                   </th>
                 ))}
+                {yearCells(history.ytd.total, true)}
               </tr>
               <tr className="net-row">
                 <th>Under / over spend</th>
                 {history.totals.map((total, i) => {
-                  const net = history.income[i] - total;
+                  const amount = history.income[i] - total;
                   return (
-                    <th key={history.months[i]} className={`num ${!withData.has(history.months[i]) ? '' : net >= 0 ? 'down' : 'up'}`}>
-                      {withData.has(history.months[i]) ? `${net >= 0 ? '+' : '−'}${formatMoney(Math.abs(net))}` : '–'}
+                    <th key={history.months[i]} className={`num ${!withData.has(history.months[i]) ? '' : amount >= 0 ? 'down' : 'up'}`}>
+                      {withData.has(history.months[i]) ? net(amount) : '–'}
                     </th>
                   );
                 })}
+                {[history.ytd.income - history.ytd.total, average(history.ytd.income) - average(history.ytd.total)].map(
+                  (amount, i) => (
+                    <th key={i} className={`num ${i === 0 ? 'ytd-col' : ''} ${amount >= 0 ? 'down' : 'up'}`}>
+                      {net(amount)}
+                    </th>
+                  ),
+                )}
               </tr>
             </tfoot>
           </table>
