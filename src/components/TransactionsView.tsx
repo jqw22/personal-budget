@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, upsertRule } from '../lib/rules';
-import { download, toCsv } from '../lib/export';
+import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
+import { parseMoney } from '../lib/importer';
 import { sortedCategories } from '../lib/store';
 import type { BudgetData, Transaction } from '../lib/types';
 
@@ -74,6 +75,9 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
     );
   }
 
+  const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
+  // Worked out over every transaction, so a filtered download still shows the real balance on each row.
+  const balances = opening === null ? null : runningBalances(data.transactions, opening);
   const untagged = data.transactions.filter((t) => !t.category).length;
   const categories = sortedCategories(data.categories);
 
@@ -106,11 +110,15 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           Remember for this merchant
         </label>
+        <OpeningBalanceInput data={data} onChange={onChange} />
         <button
           disabled={shown.length === 0}
           title="Download the transactions shown below as a CSV file, oldest first unless sorted by amount"
           onClick={() =>
-            download(`transactions-${month === 'all' ? 'all' : month}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(sort === 'date' ? [...shown].reverse() : shown))
+            download(
+              `transactions-${month === 'all' ? 'all' : month}-${new Date().toISOString().slice(0, 10)}.csv`,
+              toCsv(sort === 'date' ? [...shown].reverse() : shown, balances ?? undefined),
+            )
           }
         >
           Download CSV
@@ -173,5 +181,48 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
       </div>
       {shown.length === 0 && <p className="muted">Nothing matches these filters.</p>}
     </section>
+  );
+}
+
+/**
+ * The balance before the first transaction, which the Balance column in
+ * downloads adds up from. Until one is typed in, it's worked back from the
+ * bank's own balance, when a statement had one. Clearing it goes back to that.
+ */
+function OpeningBalanceInput({ data, onChange }: { data: BudgetData; onChange: (data: BudgetData) => void }) {
+  const [text, setText] = useState<string | null>(null);
+  const implied = impliedOpeningBalance(data.transactions);
+  const value = data.openingBalance ?? implied;
+  const shown = text ?? (value === null ? '' : (value / 100).toFixed(2));
+
+  function commit() {
+    if (text === null) return;
+    setText(null);
+    const pence = text.trim() === '' ? null : parseMoney(text);
+    if (text.trim() !== '' && pence === null) return;
+    const { openingBalance: _, ...rest } = data;
+    onChange(pence === null ? rest : { ...rest, openingBalance: pence });
+  }
+
+  return (
+    <label title={`Balance before ${formatDate(data.transactions[0].date)}, for the Balance column in downloads`}>
+      Opening balance
+      <input
+        className={`forecast-input ${data.openingBalance !== undefined ? 'edited' : ''}`}
+        inputMode="decimal"
+        value={shown}
+        placeholder="0.00"
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') {
+            setText(null);
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+      />
+    </label>
   );
 }

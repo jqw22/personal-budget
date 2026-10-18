@@ -124,6 +124,14 @@ describe('forecast sync', () => {
   });
 });
 
+describe('opening balance sync', () => {
+  it('round-trips and reaches a device that has none', () => {
+    const saved = data([tx('a', '2026-05-01')], { openingBalance: 265843 });
+    expect(fromChunks(toChunks(saved))!.openingBalance).toBe(265843);
+    expect(mergeData(data([tx('b', '2026-05-02')]), saved).openingBalance).toBe(265843);
+  });
+});
+
 describe('latestByTag', () => {
   it('keeps the newest event per tag and ignores other apps', () => {
     const e = (d: string, created_at: number) => ({ id: d + created_at, pubkey: '', sig: '', kind: 30078, content: '', created_at, tags: [['d', d]] });

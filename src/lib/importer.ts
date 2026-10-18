@@ -13,6 +13,8 @@ export interface ColumnMapping {
   /** Single signed amount column, for banks that use one. */
   amount: number;
   balance: number;
+  /** This app's own id, in files it downloaded, so importing one again skips what's already saved. */
+  id: number;
 }
 
 export interface ImportResult {
@@ -42,6 +44,7 @@ export function guessMapping(headers: string[]): ColumnMapping {
     moneyOut: findColumn(headers, ['out', 'money out', 'paid out', 'debit', 'debit amount']),
     amount: findColumn(headers, ['amount', 'value']),
     balance: findColumn(headers, ['balance', 'running balance']),
+    id: findColumn(headers, ['id']),
   };
 }
 
@@ -130,7 +133,7 @@ export function readCsv(text: string): { headers: string[]; rows: string[][] } {
  */
 export function importRows(rows: string[][], mapping: ColumnMapping, fallbackYear: number): ImportResult {
   const skipped: ImportResult['skipped'] = [];
-  const parsed: { row: number; date: PartialDate; description: string; amount: number; balance: number | null }[] = [];
+  const parsed: { row: number; date: PartialDate; description: string; amount: number; balance: number | null; id: string }[] = [];
 
   rows.forEach((cells, i) => {
     const row = i + 2; // 1-based, after the header row
@@ -159,7 +162,8 @@ export function importRows(rows: string[][], mapping: ColumnMapping, fallbackYea
     }
 
     const balance = mapping.balance === -1 ? null : parseMoney(cells[mapping.balance]);
-    parsed.push({ row, date, description, amount, balance });
+    const id = mapping.id === -1 ? '' : (cells[mapping.id] ?? '').trim();
+    parsed.push({ row, date, description, amount, balance, id });
   });
 
   resolveYears(parsed, fallbackYear);
@@ -174,7 +178,7 @@ export function importRows(rows: string[][], mapping: ColumnMapping, fallbackYea
     seen.set(key, n);
     if (n > 1) key += `|${n}`;
     return {
-      id: hash(key),
+      id: p.id || hash(key),
       date,
       description: p.description,
       merchant: merchantName(p.description),
