@@ -77,10 +77,29 @@ export function summarise(transactions: Transaction[], month: string): MonthSumm
   };
 }
 
-/** Total spending for each month that has data, oldest first. */
-export function spendingByMonth(transactions: Transaction[]): { month: string; spent: number }[] {
-  return monthsWithData(transactions).map((month) => ({
-    month,
-    spent: sum(spendingByCategory(transactions, month).values()),
-  }));
+export interface CategoryHistory {
+  /** The months covered, oldest first. */
+  months: string[];
+  /** Spending per category, one amount per month, in pence. */
+  rows: { category: string; amounts: number[] }[];
+  /** Total spending per month, in pence. */
+  totals: number[];
+  /** Money tagged as Income per month, in pence. */
+  income: number[];
+}
+
+/** Spending per category for `count` months ending at `endMonth`, oldest month first. */
+export function categoryHistory(transactions: Transaction[], endMonth: string, count: number): CategoryHistory {
+  const months = [endMonth];
+  while (months.length < count) months.unshift(previousMonth(months[0]));
+  const perMonth = months.map((m) => spendingByCategory(transactions, m));
+  const categories = new Set(perMonth.flatMap((totals) => [...totals.keys()]));
+  const rows = [...categories]
+    .map((category) => ({ category, amounts: perMonth.map((totals) => totals.get(category) ?? 0) }))
+    // Biggest spend in the latest month first, then across the whole period.
+    .sort((a, b) => b.amounts[count - 1] - a.amounts[count - 1] || sum(b.amounts) - sum(a.amounts));
+  const income = months.map((m) =>
+    sum(transactions.filter((t) => t.date.startsWith(m) && t.category === 'Income').map((t) => t.amount)),
+  );
+  return { months, rows, totals: perMonth.map((totals) => sum(totals.values())), income };
 }

@@ -130,6 +130,7 @@ button.link {
 button.link.name {
   padding: 0;
   color: inherit;
+  text-align: left;
 }
 
 button.danger {
@@ -334,74 +335,34 @@ table.summary td {
   vertical-align: middle;
 }
 
-.bar-col {
-  width: 40%;
+table.summary tr.income-row td {
+  font-weight: 600;
 }
 
-.bar {
-  height: 10px;
-  min-width: 2px;
-  border-radius: 0 4px 4px 0;
-  background: var(--accent);
+table.summary tr.section th {
+  padding-top: 14px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.month-chart {
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
-  height: 180px;
-  padding: 12px 8px 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+table.summary tr.net-row th {
+  border-top: 2px solid var(--border);
 }
 
-.month-bar {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  padding: 0;
-  border: none;
-  background: none;
+table.summary tr.net-row th.up {
+  color: var(--warn-text);
 }
 
-.month-bar .column {
-  flex: 1;
-  width: 60%;
-  max-width: 48px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 4px;
+table.summary tr.net-row th.down {
+  color: var(--in);
 }
 
-.month-bar .fill {
-  width: 100%;
-  min-height: 2px;
-  border-radius: 4px 4px 0 0;
-  background: var(--accent);
-  opacity: 0.45;
-}
-
-.month-bar.selected .fill,
-.month-bar:hover .fill {
-  opacity: 1;
-}
-
-.month-bar .amount,
-.month-bar .label {
-  font-size: 0.75rem;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.month-bar.selected .label {
+table.summary tfoot th {
+  font-size: 1rem;
   color: var(--text);
   font-weight: 600;
+  border-bottom: none;
 }
 
 .table-wrap {
@@ -417,12 +378,12 @@ table.summary td {
     max-width: 120px;
   }
 
-  .bar-col {
-    display: none;
-  }
-
   nav {
     flex-wrap: wrap;
+  }
+
+  table.summary .change-col {
+    display: none;
   }
 
   .transactions .nowrap {

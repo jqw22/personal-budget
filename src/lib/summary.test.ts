@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { previousMonth, spendingByMonth, summarise } from './summary';
+import { categoryHistory, previousMonth, summarise } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -50,11 +50,16 @@ describe('summarise', () => {
   });
 });
 
-describe('spendingByMonth', () => {
-  it('gives a total for each month with data', () => {
-    expect(spendingByMonth(transactions)).toEqual([
-      { month: '2026-05', spent: 3000 },
-      { month: '2026-06', spent: 7200 },
+describe('categoryHistory', () => {
+  it('covers the given number of months, oldest first, with totals', () => {
+    const h = categoryHistory(transactions, '2026-06', 4);
+    expect(h.months).toEqual(['2026-03', '2026-04', '2026-05', '2026-06']);
+    expect(h.rows).toEqual([
+      { category: 'Going Out', amounts: [0, 0, 1000, 4000] },
+      { category: 'Living/Food', amounts: [0, 0, 2000, 2500] },
+      { category: 'Untagged', amounts: [0, 0, 0, 700] },
     ]);
+    expect(h.totals).toEqual([0, 0, 3000, 7200]);
+    expect(h.income).toEqual([0, 0, 0, 200000]);
   });
 });
