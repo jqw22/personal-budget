@@ -276,6 +276,134 @@ form.inline {
   gap: 8px;
 }
 
+.small {
+  font-size: 0.85rem;
+}
+
+.month-picker {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.stat .label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.stat .value {
+  font-size: 1.6rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0;
+}
+
+.stat .sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.up {
+  color: var(--warn-text);
+}
+
+.down {
+  color: var(--in);
+}
+
+button.link.inline-link {
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+}
+
+table.summary td {
+  vertical-align: middle;
+}
+
+.bar-col {
+  width: 40%;
+}
+
+.bar {
+  height: 10px;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+
+.month-chart {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 180px;
+  padding: 12px 8px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.month-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.month-bar .column {
+  flex: 1;
+  width: 60%;
+  max-width: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+
+.month-bar .fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+  opacity: 0.45;
+}
+
+.month-bar.selected .fill,
+.month-bar:hover .fill {
+  opacity: 1;
+}
+
+.month-bar .amount,
+.month-bar .label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.month-bar.selected .label {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -287,6 +415,14 @@ form.inline {
 
   .transactions select {
     max-width: 120px;
+  }
+
+  .bar-col {
+    display: none;
+  }
+
+  nav {
+    flex-wrap: wrap;
   }
 
   .transactions .nowrap {
