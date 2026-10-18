@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatMoney } from '../lib/format';
+import { formatPounds } from '../lib/format';
 import { parseMoney } from '../lib/importer';
 import { nextMonth, type CategoryHistory } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
@@ -22,7 +22,7 @@ function shortMonth(month: string): string {
 }
 
 function net(amount: number): string {
-  return `${amount >= 0 ? '+' : '−'}${formatMoney(Math.abs(amount))}`;
+  return `${amount >= 0 ? '+' : '−'}${formatPounds(Math.abs(amount))}`;
 }
 
 /** A money box that saves when you leave it. Clearing it goes back to the average. */
@@ -38,14 +38,14 @@ function MoneyInput({
   onCommit: (pence: number | null) => void;
 }) {
   const [text, setText] = useState<string | null>(null);
-  const shown = text ?? (value / 100).toFixed(2);
+  const shown = text ?? String(Math.round(value / 100));
 
   function commit() {
     if (text === null) return;
     setText(null);
     if (text.trim() === '') return onCommit(null);
     const pence = parseMoney(text);
-    if (pence !== null && pence !== value) onCommit(Math.abs(pence));
+    if (pence !== null && pence !== value) onCommit(Math.round(Math.abs(pence) / 100) * 100);
   }
 
   return (
@@ -72,7 +72,8 @@ function MoneyInput({
 export function ForecastTable({ data, history, month, onChange }: Props) {
   const months: string[] = [];
   for (let m = nextMonth(month); months.length < MONTHS_AHEAD; m = nextMonth(m)) months.push(m);
-  const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months) : 0);
+  // Whole pounds, so the totals add up to the figures shown.
+  const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
   const forecast = data.forecast ?? {};
   const figure = (m: string, row: string, fallback: number) => forecast[m]?.[row] ?? fallback;
 
@@ -106,7 +107,7 @@ export function ForecastTable({ data, history, month, onChange }: Props) {
           />
         </td>
       ))}
-      <td className="num ytd-col">{formatMoney(sum(amounts))}</td>
+      <td className="num ytd-col">{formatPounds(sum(amounts))}</td>
     </>
   );
 
@@ -150,10 +151,10 @@ export function ForecastTable({ data, history, month, onChange }: Props) {
               <th>Total spending</th>
               {totals.map((total, i) => (
                 <th key={months[i]} className="num">
-                  {formatMoney(total)}
+                  {formatPounds(total)}
                 </th>
               ))}
-              <th className="num ytd-col">{formatMoney(sum(totals))}</th>
+              <th className="num ytd-col">{formatPounds(sum(totals))}</th>
             </tr>
             <tr className="net-row">
               <th>Under / over spend</th>

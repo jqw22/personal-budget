@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { formatMoney, formatMonth } from '../lib/format';
+import { formatMoney, formatMonth, formatPounds } from '../lib/format';
 import { categoryHistory, monthsWithData, UNTAGGED } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
 import { ForecastTable } from './ForecastTable';
@@ -16,7 +16,7 @@ const MONTHS_SHOWN = 4;
 
 /** Signed money for the under / over spend line. */
 function net(amount: number): string {
-  return `${amount >= 0 ? '+' : '−'}${formatMoney(Math.abs(amount))}`;
+  return `${amount >= 0 ? '+' : '−'}${formatPounds(Math.abs(amount))}`;
 }
 
 function shortMonth(month: string): string {
@@ -54,8 +54,8 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
     const Cell = header ? 'th' : 'td';
     return (
       <>
-        <Cell className="num ytd-col">{formatMoney(amount)}</Cell>
-        <Cell className="num">{formatMoney(average(amount))}</Cell>
+        <Cell className="num ytd-col">{formatPounds(amount)}</Cell>
+        <Cell className="num">{formatPounds(average(amount))}</Cell>
       </>
     );
   };
@@ -132,7 +132,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
                 </td>
                 {history.income.map((amount, i) => (
                   <td key={history.months[i]} className="num">
-                    {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
+                    {withData.has(history.months[i]) ? formatPounds(amount) : '–'}
                   </td>
                 ))}
                 {yearCells(history.ytd.income)}
@@ -154,7 +154,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
                     </td>
                     {r.amounts.map((amount, i) => (
                       <td key={history.months[i]} className={`num ${i < r.amounts.length - 1 ? 'muted' : ''}`}>
-                        {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
+                        {withData.has(history.months[i]) ? formatPounds(amount) : '–'}
                       </td>
                     ))}
                     {yearCells(r.ytd)}
@@ -167,7 +167,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
                 <th>Total spending</th>
                 {history.totals.map((total, i) => (
                   <th key={history.months[i]} className="num">
-                    {withData.has(history.months[i]) ? formatMoney(total) : '–'}
+                    {withData.has(history.months[i]) ? formatPounds(total) : '–'}
                   </th>
                 ))}
                 {yearCells(history.ytd.total, true)}

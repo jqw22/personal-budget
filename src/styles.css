@@ -434,7 +434,7 @@ table.summary .ytd-col {
 }
 
 input.forecast-input {
-  width: 6.5em;
+  width: 5.5em;
   padding: 2px 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
