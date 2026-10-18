@@ -6,15 +6,17 @@ import type { BudgetData, Transaction } from '../lib/types';
 interface Props {
   data: BudgetData;
   onChange: (data: BudgetData) => void;
+  /** Filters to open with, e.g. when coming from the summary's "Tag it now". */
+  initialFilter?: { month: string; onlyUntagged: boolean };
 }
 
-export function TransactionsView({ data, onChange }: Props) {
+export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const months = useMemo(
     () => [...new Set(data.transactions.map((t) => t.date.slice(0, 7)))].sort().reverse(),
     [data.transactions],
   );
-  const [month, setMonth] = useState<string>('all');
-  const [onlyUntagged, setOnlyUntagged] = useState(false);
+  const [month, setMonth] = useState<string>(initialFilter?.month ?? 'all');
+  const [onlyUntagged, setOnlyUntagged] = useState(initialFilter?.onlyUntagged ?? false);
   const [remember, setRemember] = useState(true);
   const [search, setSearch] = useState('');
 
