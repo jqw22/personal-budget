@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ImportView } from './components/ImportView';
 import { RulesView } from './components/RulesView';
 import { SummaryView } from './components/SummaryView';
-import { TransactionsView } from './components/TransactionsView';
+import { TransactionsView, UNTAGGED_FILTER, type TransactionFilter } from './components/TransactionsView';
 import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
 
@@ -11,7 +11,7 @@ type Tab = 'summary' | 'import' | 'transactions' | 'rules';
 export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
   const [tab, setTab] = useState<Tab>(() => (data.transactions.length ? 'summary' : 'import'));
-  const [txFilter, setTxFilter] = useState<{ month: string; onlyUntagged: boolean } | undefined>();
+  const [txFilter, setTxFilter] = useState<TransactionFilter | undefined>();
 
   function openTab(next: Tab) {
     setTxFilter(undefined);
@@ -45,8 +45,8 @@ export function App() {
         {tab === 'summary' && (
           <SummaryView
             data={data}
-            onShowUntagged={(month) => {
-              setTxFilter({ month, onlyUntagged: true });
+            onShowTransactions={(month, category) => {
+              setTxFilter({ month, category: category ?? UNTAGGED_FILTER });
               setTab('transactions');
             }}
           />

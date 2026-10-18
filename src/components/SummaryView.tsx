@@ -5,7 +5,8 @@ import type { BudgetData } from '../lib/types';
 
 interface Props {
   data: BudgetData;
-  onShowUntagged: (month: string) => void;
+  /** Opens the transactions for a month and category; null means untagged. */
+  onShowTransactions: (month: string, category: string | null) => void;
 }
 
 function shortMonth(month: string): string {
@@ -25,7 +26,7 @@ function Change({ now, before }: { now: number; before: number }) {
   );
 }
 
-export function SummaryView({ data, onShowUntagged }: Props) {
+export function SummaryView({ data, onShowTransactions }: Props) {
   const months = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
   const [month, setMonth] = useState(() => months.at(-1) ?? '');
   const summary = useMemo(() => summarise(data.transactions, month), [data.transactions, month]);
@@ -109,7 +110,7 @@ export function SummaryView({ data, onShowUntagged }: Props) {
       {untagged && untagged.spent > 0 && (
         <p className="warning">
           {formatMoney(untagged.spent)} this month isn't tagged yet.{' '}
-          <button className="link inline-link" onClick={() => onShowUntagged(month)}>
+          <button className="link inline-link" onClick={() => onShowTransactions(month, null)}>
             Tag it now
           </button>
         </p>
@@ -133,7 +134,15 @@ export function SummaryView({ data, onShowUntagged }: Props) {
             <tbody>
               {summary.lines.map((l) => (
                 <tr key={l.category} className={l.category === UNTAGGED ? 'untagged' : ''}>
-                  <td>{l.category}</td>
+                  <td>
+                    <button
+                      className="link name"
+                      title={`See ${l.category} transactions`}
+                      onClick={() => onShowTransactions(month, l.category === UNTAGGED ? null : l.category)}
+                    >
+                      {l.category}
+                    </button>
+                  </td>
                   <td className="bar-col">
                     {l.spent > 0 && (
                       <div

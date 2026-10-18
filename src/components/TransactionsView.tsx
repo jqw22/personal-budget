@@ -6,8 +6,17 @@ import type { BudgetData, Transaction } from '../lib/types';
 interface Props {
   data: BudgetData;
   onChange: (data: BudgetData) => void;
-  /** Filters to open with, e.g. when coming from the summary's "Tag it now". */
-  initialFilter?: { month: string; onlyUntagged: boolean };
+  /** Filters to open with, e.g. when coming from the summary. */
+  initialFilter?: TransactionFilter;
+}
+
+/** Category filter value that shows only untagged transactions. */
+export const UNTAGGED_FILTER = '__untagged__';
+
+export interface TransactionFilter {
+  month: string;
+  /** A category name, 'all', or UNTAGGED_FILTER. */
+  category: string;
 }
 
 export function TransactionsView({ data, onChange, initialFilter }: Props) {
@@ -16,13 +25,13 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
     [data.transactions],
   );
   const [month, setMonth] = useState<string>(initialFilter?.month ?? 'all');
-  const [onlyUntagged, setOnlyUntagged] = useState(initialFilter?.onlyUntagged ?? false);
+  const [category, setCategory] = useState<string>(initialFilter?.category ?? 'all');
   const [remember, setRemember] = useState(true);
   const [search, setSearch] = useState('');
 
   const shown = data.transactions
     .filter((t) => month === 'all' || t.date.startsWith(month))
-    .filter((t) => !onlyUntagged || !t.category)
+    .filter((t) => category === 'all' || (category === UNTAGGED_FILTER ? !t.category : t.category === category))
     .filter((t) => !search || t.description.toLowerCase().includes(search.toLowerCase()))
     .slice()
     .reverse();
@@ -73,16 +82,27 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
             </option>
           ))}
         </select>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">
+          <option value="all">All categories</option>
+          <option value={UNTAGGED_FILTER}>Untagged</option>
+          {data.categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
         <input type="search" placeholder="Search descriptions" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <label>
-          <input type="checkbox" checked={onlyUntagged} onChange={(e) => setOnlyUntagged(e.target.checked)} />
-          Only untagged
-        </label>
         <label title="When you tag a transaction, tag every other transaction from the same place the same way">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           Remember for this merchant
         </label>
       </div>
+      {shown.length > 0 && (month !== 'all' || category !== 'all' || search) && (
+        <p className="muted small">
+          {shown.length} transaction{shown.length === 1 ? '' : 's'}, totalling{' '}
+          {formatMoney(shown.reduce((total, t) => total + t.amount, 0))}
+        </p>
+      )}
       <div className="table-wrap">
         <table className="transactions">
           <thead>
