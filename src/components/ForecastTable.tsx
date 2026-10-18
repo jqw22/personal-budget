@@ -126,6 +126,12 @@ export function ForecastTable({ data, history, month, startBalance, onChange }: 
       </p>
       <div className="table-wrap">
         <table className="summary forecast">
+          <colgroup>
+            <col className="category-col" />
+            {[...months, 'total'].map((key) => (
+              <col key={key} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               <th>Category</th>

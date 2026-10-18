@@ -106,6 +106,12 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
       ) : (
         <div className="table-wrap">
           <table className="summary">
+            <colgroup>
+              <col className="category-col" />
+              {[...history.months, 'ytd', 'avg'].map((key) => (
+                <col key={key} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
                 <th>Category</th>
