@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { formatMoney, formatMonth } from '../lib/format';
-import { monthsWithData, NOT_SPENDING, spendingByMonth, summarise, UNTAGGED } from '../lib/summary';
+import { categoryHistory, monthsWithData, NOT_SPENDING, summarise, UNTAGGED } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
 
 interface Props {
@@ -8,6 +8,9 @@ interface Props {
   /** Opens the transactions for a month and category; null means untagged. */
   onShowTransactions: (month: string, category: string | null) => void;
 }
+
+/** How many months the category table shows, ending at the chosen month. */
+const MONTHS_SHOWN = 4;
 
 function shortMonth(month: string): string {
   return new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short' });
@@ -30,7 +33,10 @@ export function SummaryView({ data, onShowTransactions }: Props) {
   const months = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
   const [month, setMonth] = useState(() => months.at(-1) ?? '');
   const summary = useMemo(() => summarise(data.transactions, month), [data.transactions, month]);
-  const history = useMemo(() => spendingByMonth(data.transactions).slice(-12), [data.transactions]);
+  const history = useMemo(() => (month ? categoryHistory(data.transactions, month, MONTHS_SHOWN) : null), [
+    data.transactions,
+    month,
+  ]);
 
   if (months.length === 0) {
     return (
@@ -43,8 +49,7 @@ export function SummaryView({ data, onShowTransactions }: Props) {
 
   const index = months.indexOf(month);
   const hasPrevious = months.includes(summary.previousMonth);
-  const maxLine = Math.max(1, ...summary.lines.map((l) => l.spent));
-  const maxMonth = Math.max(1, ...history.map((h) => h.spent));
+  const withData = new Set(months);
   const untagged = summary.lines.find((l) => l.category === UNTAGGED);
   const monthTransactions = data.transactions.filter((t) => t.date.startsWith(month));
   const firstDay = Number(monthTransactions[0]?.date.slice(8));
@@ -77,6 +82,11 @@ export function SummaryView({ data, onShowTransactions }: Props) {
 
       <div className="stats">
         <div className="stat">
+          <div className="label">Income</div>
+          <div className="value">{formatMoney(summary.income)}</div>
+          <div className="sub">Tagged as Income</div>
+        </div>
+        <div className="stat">
           <div className="label">Spent</div>
           <div className="value">{formatMoney(summary.spent)}</div>
           <div className="sub">
@@ -90,14 +100,11 @@ export function SummaryView({ data, onShowTransactions }: Props) {
           </div>
         </div>
         <div className="stat">
-          <div className="label">Income</div>
-          <div className="value">{formatMoney(summary.income)}</div>
-          <div className="sub">Tagged as Income</div>
-        </div>
-        <div className="stat">
-          <div className="label">Last month</div>
-          <div className="value">{hasPrevious ? formatMoney(summary.previousSpent) : '–'}</div>
-          <div className="sub">Spent in {formatMonth(summary.previousMonth)}</div>
+          <div className="label">{summary.income - summary.spent >= 0 ? 'Underspent' : 'Overspent'}</div>
+          <div className={`value ${summary.income - summary.spent >= 0 ? 'down' : 'up'}`}>
+            {formatMoney(Math.abs(summary.income - summary.spent))}
+          </div>
+          <div className="sub">Income minus spending</div>
         </div>
       </div>
 
@@ -116,75 +123,99 @@ export function SummaryView({ data, onShowTransactions }: Props) {
         </p>
       )}
 
-      <h2>Spending by category</h2>
-      {summary.lines.length === 0 ? (
-        <p className="muted">No spending this month.</p>
+      <h2>Income and spending</h2>
+      {!history || history.rows.length === 0 ? (
+        <p className="muted">No spending in these months.</p>
       ) : (
         <div className="table-wrap">
           <table className="summary">
             <thead>
               <tr>
                 <th>Category</th>
-                <th className="bar-col" aria-hidden />
-                <th className="num">{shortMonth(month)}</th>
-                <th className="num">{shortMonth(summary.previousMonth)}</th>
-                <th className="num">Change</th>
+                {history.months.map((m) => (
+                  <th key={m} className="num">
+                    {shortMonth(m)}
+                  </th>
+                ))}
+                <th className="num change-col">Change</th>
               </tr>
             </thead>
             <tbody>
-              {summary.lines.map((l) => (
-                <tr key={l.category} className={l.category === UNTAGGED ? 'untagged' : ''}>
-                  <td>
-                    <button
-                      className="link name"
-                      title={`See ${l.category} transactions`}
-                      onClick={() => onShowTransactions(month, l.category === UNTAGGED ? null : l.category)}
-                    >
-                      {l.category}
-                    </button>
+              <tr className="income-row">
+                <td>
+                  <button
+                    className="link name"
+                    title="See Income transactions"
+                    onClick={() => onShowTransactions(month, 'Income')}
+                  >
+                    Income
+                  </button>
+                </td>
+                {history.income.map((amount, i) => (
+                  <td key={history.months[i]} className="num">
+                    {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
                   </td>
-                  <td className="bar-col">
-                    {l.spent > 0 && (
-                      <div
-                        className="bar"
-                        style={{ width: `${(l.spent / maxLine) * 100}%` }}
-                        title={`${l.category}: ${formatMoney(l.spent)}`}
-                      />
-                    )}
-                  </td>
-                  <td className="num">{formatMoney(l.spent)}</td>
-                  <td className="num muted">{hasPrevious ? formatMoney(l.previous) : '–'}</td>
-                  <td className="num">{hasPrevious && <Change now={l.spent} before={l.previous} />}</td>
-                </tr>
-              ))}
+                ))}
+                <td className="change-col" />
+              </tr>
+              <tr className="section">
+                <th colSpan={history.months.length + 2}>Spending</th>
+              </tr>
+              {history.rows.map((r) => {
+                const [before, now] = r.amounts.slice(-2);
+                return (
+                  <tr key={r.category} className={r.category === UNTAGGED ? 'untagged' : ''}>
+                    <td>
+                      <button
+                        className="link name"
+                        title={`See ${r.category} transactions`}
+                        onClick={() => onShowTransactions(month, r.category === UNTAGGED ? null : r.category)}
+                      >
+                        {r.category}
+                      </button>
+                    </td>
+                    {r.amounts.map((amount, i) => (
+                      <td key={history.months[i]} className={`num ${i < r.amounts.length - 1 ? 'muted' : ''}`}>
+                        {withData.has(history.months[i]) ? formatMoney(amount) : '–'}
+                      </td>
+                    ))}
+                    <td className="num change-col">{hasPrevious && <Change now={now} before={before} />}</td>
+                  </tr>
+                );
+              })}
             </tbody>
+            <tfoot>
+              <tr>
+                <th>Total spending</th>
+                {history.totals.map((total, i) => (
+                  <th key={history.months[i]} className="num">
+                    {withData.has(history.months[i]) ? formatMoney(total) : '–'}
+                  </th>
+                ))}
+                <th className="num change-col">
+                  {hasPrevious && <Change now={history.totals.at(-1)!} before={history.totals.at(-2)!} />}
+                </th>
+              </tr>
+              <tr className="net-row">
+                <th>Under / over spend</th>
+                {history.totals.map((total, i) => {
+                  const net = history.income[i] - total;
+                  return (
+                    <th key={history.months[i]} className={`num ${!withData.has(history.months[i]) ? '' : net >= 0 ? 'down' : 'up'}`}>
+                      {withData.has(history.months[i]) ? `${net >= 0 ? '+' : '−'}${formatMoney(Math.abs(net))}` : '–'}
+                    </th>
+                  );
+                })}
+                <th className="change-col" />
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
-      <p className="muted small">{NOT_SPENDING.join(' and ')} aren't counted as spending.</p>
-
-      {history.length > 1 && (
-        <>
-          <h2>Spending by month</h2>
-          <div className="month-chart" role="list">
-            {history.map((h) => (
-              <button
-                key={h.month}
-                role="listitem"
-                className={`month-bar ${h.month === month ? 'selected' : ''}`}
-                title={`${formatMonth(h.month)}: ${formatMoney(h.spent)}`}
-                onClick={() => setMonth(h.month)}
-              >
-                <span className="column">
-                  <span className="amount">{formatMoney(h.spent).replace(/\.\d\d$/, '')}</span>
-                  <span className="fill" style={{ height: `${(Math.max(0, h.spent) / maxMonth) * 85}%` }} />
-                </span>
-                <span className="label">{shortMonth(h.month)}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <p className="muted small">
+        {NOT_SPENDING.join(' and ')} aren't counted as spending. Under / over spend is income minus spending: + means you
+        spent less than came in. A dash means no statements imported for that month.
+      </p>
     </section>
   );
 }
