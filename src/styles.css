@@ -1,0 +1,296 @@
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1d1d1b;
+  --muted: #6b6b66;
+  --border: #e2e2dd;
+  --accent: #2f6f4f;
+  --accent-text: #ffffff;
+  --in: #2f7d4a;
+  --warn-bg: #fff4dc;
+  --warn-text: #7a5300;
+  --untagged: #fffaf0;
+  --danger: #b3261e;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --surface: #1f1f1d;
+    --text: #ececea;
+    --muted: #9a9a94;
+    --border: #34342f;
+    --accent: #5fae84;
+    --accent-text: #0e1a13;
+    --in: #6cc48d;
+    --warn-bg: #3a2f14;
+    --warn-text: #f0cf86;
+    --untagged: #24221b;
+    --danger: #f2867e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+h1 {
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 24px 0 8px;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 20px 0 8px;
+}
+
+section > h2:first-child {
+  margin-top: 0;
+}
+
+nav {
+  display: flex;
+  gap: 4px;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+select,
+input[type='number'],
+input[type='search'],
+input:not([type]) {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+nav button.active,
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+button.primary {
+  margin-top: 12px;
+  padding: 8px 16px;
+}
+
+button.link {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  color: var(--muted);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.notice {
+  color: var(--in);
+}
+
+.warning {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.file-picker input {
+  display: none;
+}
+
+.file-picker span {
+  display: inline-block;
+  padding: 8px 16px;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.mapping {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.mapping label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filters label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.in {
+  color: var(--in);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+tr.untagged {
+  background: var(--untagged);
+}
+
+.sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.chips li {
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+form.inline {
+  display: flex;
+  gap: 8px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .transactions .sub {
+    display: none;
+  }
+
+  .transactions select {
+    max-width: 120px;
+  }
+
+  .transactions .nowrap {
+    white-space: normal;
+    font-size: 0.85rem;
+  }
+
+  th,
+  td {
+    padding: 6px 4px;
+  }
+}
