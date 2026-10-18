@@ -428,3 +428,7 @@ code.nsec {
   background: var(--surface);
   overflow-wrap: anywhere;
 }
+
+table.summary .ytd-col {
+  border-left: 2px solid var(--border);
+}
