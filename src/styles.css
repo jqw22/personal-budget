@@ -369,3 +369,62 @@ button.link.sort {
   font-weight: inherit;
   color: inherit;
 }
+
+button.link.sync-status {
+  padding: 0;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+button.link.sync-status.error {
+  color: var(--danger);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+form.signin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+form.signin input[type='password'] {
+  flex: 1 1 240px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+form.signin label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+textarea.relays {
+  width: 100%;
+  max-width: 420px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+code.nsec {
+  display: block;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
