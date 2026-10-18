@@ -35,7 +35,7 @@ describe('parseDate', () => {
 describe('importRows', () => {
   it('maps the split In/Out columns despite padded headers', () => {
     const { headers } = readCsv(sample);
-    expect(guessMapping(headers)).toEqual({ date: 0, description: 1, moneyIn: 2, moneyOut: 3, amount: -1, balance: 4 });
+    expect(guessMapping(headers)).toEqual({ date: 0, description: 1, moneyIn: 2, moneyOut: 3, amount: -1, balance: 4, id: -1 });
   });
 
   it('skips the balance line and blank rows, and keeps multi-line descriptions', () => {
