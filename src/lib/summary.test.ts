@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -55,5 +55,12 @@ describe('categoryHistory', () => {
     expect(h.ytd).toEqual({ months: 2, total: 10200, income: 200000 });
     expect(h.totals).toEqual([0, 0, 3000, 7200]);
     expect(h.income).toEqual([0, 0, 0, 200000]);
+  });
+});
+
+describe('closingBalances', () => {
+  it('adds every transaction up to the end of each month onto the opening balance', () => {
+    const list = [tx('2026-05-03', -2000, null), tx('2026-05-31', 50000, 'Income'), tx('2026-06-01', -1000, 'Transfers')];
+    expect(closingBalances(list, 10000, ['2026-04', '2026-05', '2026-06'])).toEqual([10000, 58000, 57000]);
   });
 });

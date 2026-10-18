@@ -88,3 +88,11 @@ export function categoryHistory(transactions: Transaction[], endMonth: string, c
     ytd: { months: ytdMonths.size, total: sum(ytd.values()), income: incomeIn(thisYear) },
   };
 }
+
+/** The balance at the end of each of `months`, adding every transaction up to then onto `opening`, in pence. */
+export function closingBalances(transactions: Transaction[], opening: number, months: string[]): number[] {
+  return months.map((m) => {
+    const end = nextMonth(m);
+    return transactions.reduce((balance, t) => (t.date < end ? balance + t.amount : balance), opening);
+  });
+}

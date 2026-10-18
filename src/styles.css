@@ -328,6 +328,10 @@ table.summary tr.net-row th.down {
   color: var(--in);
 }
 
+table.summary tr.balance-row th {
+  border-top: 1px solid var(--border);
+}
+
 table.summary tfoot th {
   font-size: 1rem;
   color: var(--text);
