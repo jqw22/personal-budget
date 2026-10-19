@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, closingBalances, dailyBalances, dailyForecast, forecastAfter, groupSpending, incomePaydays, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, dailyBalances, dailyForecast, forecastFrom, groupSpending, incomePaydays, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -96,39 +96,77 @@ describe('dailyBalances', () => {
   });
 });
 
+// May is a full month: £3,000 paid on the 25th, £1,000 rent and £248 food. June is imported up to the 10th.
+function forecastData(): Transaction[] {
+  const tx = (id: string, date: string, amount: number, category: string, merchant = id): Transaction => ({
+    id, date, description: merchant, merchant, amount, balance: null, category, categorySource: 'manual',
+  });
+  return [
+    tx('a', '2026-05-01', -100000, 'Rent & bills', 'RENT'),
+    tx('b', '2026-05-25', 300000, 'Income', 'EMPLOYER'),
+    tx('c', '2026-05-31', -24800, 'Living/Food', 'TESCO'),
+    tx('d', '2026-06-01', -100000, 'Rent & bills', 'RENT'),
+    tx('e', '2026-06-10', -10000, 'Living/Food', 'TESCO'),
+  ];
+}
+
+describe('forecastFrom', () => {
+  const amounts = (f: ReturnType<typeof forecastFrom>, category: string) => f.rows.find((r) => r.category === category)!.amounts;
+
+  it('starts with the month being imported, using what has gone so far or the average of the months before it, whichever is more', () => {
+    const f = forecastFrom(forecastData(), undefined, 0);
+    expect(f.months).toEqual(['2026-06', '2026-07', '2026-08', '2026-09', '2026-10']);
+    expect(f.income[0]).toBe(300000);
+    expect(amounts(f, 'Rent & bills')[0]).toBe(100000);
+    expect(amounts(f, 'Living/Food').slice(0, 2)).toEqual([24800, 24800]);
+    // May's closing balance of £1,752, plus June's forecast.
+    expect(f.closing[0]).toBe(350400);
+  });
+
+  it('uses the actual figures once the month is complete', () => {
+    const data = [...forecastData(), { ...forecastData()[4], id: 'f', date: '2026-06-30', amount: -50000 }];
+    const f = forecastFrom(data, undefined, null);
+    expect(amounts(f, 'Living/Food').slice(0, 2)).toEqual([60000, 42400]);
+    expect(f.income[0]).toBe(0);
+  });
+
+  it('adds a row for each spending category with nothing spent yet, using any figure typed in', () => {
+    const f = forecastFrom(forecastData(), { '2026-07': { Holidays: 50000 } }, null, ['Living/Food', 'Holidays', 'Drinks', 'Income', 'Transfers'], 2);
+    expect(f.rows.map((r) => r.category).slice(-2)).toEqual(['Drinks', 'Holidays']);
+    expect(amounts(f, 'Holidays')).toEqual([0, 50000]);
+    expect(f.rows.some((r) => r.category === 'Income' || r.category === 'Transfers')).toBe(false);
+  });
+});
+
 describe('dailyForecast', () => {
-  const tx = (id: string, date: string, amount: number, category: string): Transaction => ({
-    id, date, description: id, merchant: id, amount, balance: null, category, categorySource: 'manual',
-  });
-  // June has income of £3,000 and spending of £2,070, so the average month is £930 under.
-  const transactions = [tx('a', '2026-06-01', 300000, 'Income'), tx('b', '2026-06-02', -207000, 'Rent & bills')];
-  const history = categoryHistory(transactions, '2026-06', 1);
+  const from = { date: '2026-06-10', balance: 0 };
 
-  it('spreads spending evenly and pays income in one go on its usual day', () => {
-    const days = dailyForecast(transactions, history, undefined, { date: '2026-06-28', balance: 100000 }, '2026-07-31');
-    expect(days[0]).toEqual({ date: '2026-06-29', balance: 93100 });
-    expect(days.find((d) => d.date === '2026-06-30')!.balance).toBe(86200);
-    // £3,000 lands on the 1st, less a day's spending of £66.77.
-    expect(days.find((d) => d.date === '2026-07-01')!.balance).toBe(379523);
-    expect(days.at(-1)).toEqual({ date: '2026-07-31', balance: 179200 });
+  it("spreads what's left of this month's spending over the days left, and pays income on its usual day", () => {
+    const days = dailyForecast(forecastData(), undefined, from, '2026-07-31');
+    // £1,248 forecast less £1,100 spent leaves £148 over 20 days.
+    expect(days[0]).toEqual({ date: '2026-06-11', balance: -740 });
+    expect(days.find((d) => d.date === '2026-06-24')!.balance).toBe(-10360);
+    expect(days.find((d) => d.date === '2026-06-25')!.balance).toBe(288900);
+    expect(days.find((d) => d.date === '2026-06-30')!.balance).toBe(285200);
+    expect(days.at(-1)).toEqual({ date: '2026-07-31', balance: 460400 });
   });
 
-  it("uses the user's own forecast figures for a month", () => {
-    const days = dailyForecast(transactions, history, { '2026-07': { Income: 0 } }, { date: '2026-06-30', balance: 0 }, '2026-07-31');
-    expect(days.at(-1)!.balance).toBe(-207000);
-  });
-
-  it("pays income still due this month, and moves a payday the month doesn't have to its last day", () => {
-    // May and June make two months this year, so the averages are £1,035 spent and £1,500 in.
-    const paid31 = [tx('a', '2026-05-31', 300000, 'Income'), tx('b', '2026-06-02', -207000, 'Rent & bills')];
-    const days = dailyForecast(paid31, categoryHistory(paid31, '2026-06', 1), undefined, { date: '2026-06-02', balance: 0 }, '2026-06-30');
-    expect(days.find((d) => d.date === '2026-06-29')!.balance).toBe(-93150);
-    expect(days.at(-1)!.balance).toBe(53400);
+  it("uses the user's own forecast figures for this month", () => {
+    const days = dailyForecast(forecastData(), { '2026-06': { Income: 0, 'Living/Food': 50000 } }, from, '2026-06-30');
+    expect(days.at(-1)!.balance).toBe(-40000);
   });
 
   it('skips income already received this month', () => {
-    const days = dailyForecast(transactions, history, undefined, { date: '2026-06-02', balance: 0 }, '2026-06-30');
-    expect(days.at(-1)!.balance).toBe(-193200);
+    const paid = [...forecastData(), { ...forecastData()[1], id: 'f', date: '2026-06-10' }];
+    const days = dailyForecast(paid, undefined, from, '2026-06-30');
+    expect(days.at(-1)!.balance).toBe(-14800);
+  });
+
+  it("moves a payday the month doesn't have to its last day", () => {
+    const data = forecastData().map((t) => (t.id === 'b' ? { ...t, date: '2026-05-31' } : t));
+    const days = dailyForecast(data, undefined, from, '2026-06-30');
+    expect(days.find((d) => d.date === '2026-06-29')!.balance).toBe(-14060);
+    expect(days.at(-1)!.balance).toBe(285200);
   });
 });
 
@@ -145,15 +183,5 @@ describe('incomePaydays', () => {
       { merchant: 'EMPLOYER', day: 25, share: 0.9 },
       { merchant: 'RENT IN', day: 10, share: 0.1 },
     ]);
-  });
-});
-
-describe('forecastAfter', () => {
-  it('adds a row for each spending category with nothing spent yet, using any figure typed in', () => {
-    const history = categoryHistory(transactions, '2026-06', 2);
-    const forecast = forecastAfter(history, { '2026-07': { Holidays: 50000 } }, null, 2, ['Living/Food', 'Holidays', 'Drinks', 'Income', 'Transfers']);
-    expect(forecast.rows.map((r) => r.category).slice(-2)).toEqual(['Drinks', 'Holidays']);
-    expect(forecast.rows.find((r) => r.category === 'Holidays')!.amounts).toEqual([50000, 0]);
-    expect(forecast.rows.some((r) => r.category === 'Income' || r.category === 'Transfers')).toBe(false);
   });
 });

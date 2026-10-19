@@ -148,50 +148,77 @@ export function lastDayOf(month: string): string {
   return `${month}-${String(daysInMonth(month)).padStart(2, '0')}`;
 }
 
-/** How many months ahead the forecast covers. */
+/** How many months the forecast covers after the month with the latest transactions. */
 export const FORECAST_MONTHS = 4;
 
 export interface Forecast {
+  /** The month with the latest transactions, then the months after it. */
   months: string[];
   /** Income per month, in pence. */
   income: number[];
   /** Spending per category, one amount per month, in pence. */
   rows: { category: string; amounts: number[] }[];
   totals: number[];
-  /** Balance at the end of each month, from `startBalance`. Empty when that isn't known. */
+  /** Balance at the end of each month. Empty when the opening balance isn't known. */
   closing: number[];
 }
 
+/** True when transactions run to the last day of `month`, so it isn't still being filled in. */
+function isComplete(transactions: Transaction[], month: string): boolean {
+  return (transactions.at(-1)?.date ?? '') >= lastDayOf(month);
+}
+
 /**
- * The months after `history`'s last month: each row's monthly average this
+ * The forecast for the month with the latest transactions and the
+ * `FORECAST_MONTHS` after it. Each row starts at its monthly average this
  * year, rounded to whole pounds so totals add up to the figures shown, unless
- * the user typed in their own figure. Spending `categories` with nothing spent
- * yet get a row too, so a figure can be typed in for them.
+ * the user typed in their own figure. A part month's averages leave that
+ * month out, and its own forecast is what's gone so far or the average,
+ * whichever is more; once the month is complete it's the actual amount.
+ * Spending `categories` with nothing spent yet get a row too, so a figure can
+ * be typed in for them.
  */
-export function forecastAfter(
-  history: CategoryHistory,
+export function forecastFrom(
+  transactions: Transaction[],
   figures: Record<string, Record<string, number>> = {},
-  startBalance: number | null,
-  count = FORECAST_MONTHS,
+  opening: number | null,
   categories: string[] = [],
+  count = FORECAST_MONTHS + 1,
 ): Forecast {
+  const first = monthsWithData(transactions)[0];
+  const latest = monthsWithData(transactions).at(-1);
+  if (!latest) return { months: [], income: [], rows: [], totals: [], closing: [] };
+  const complete = isComplete(transactions, latest);
+  const averageOver = complete || first === latest ? latest : previousMonth(latest);
+  const history = categoryHistory(transactions, averageOver, 1);
+  const actual = categoryHistory(transactions, latest, 1);
   const months: string[] = [];
-  for (let m = nextMonth(history.months.at(-1)!); months.length < count; m = nextMonth(m)) months.push(m);
+  for (let m = latest; months.length < count; m = nextMonth(m)) months.push(m);
+
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
-  const figure = (m: string, row: string, fallback: number) => figures[m]?.[row] ?? fallback;
-  const income = months.map((m) => figure(m, 'Income', average(history.ytd.income)));
-  const empty = categories
-    .filter((c) => !NOT_SPENDING.includes(c) && !history.rows.some((r) => r.category === c))
-    .sort((a, b) => a.localeCompare(b))
-    .map((category) => ({ category, ytd: 0 }));
-  const rows = [...history.rows, ...empty].map((r) => ({
-    category: r.category,
-    amounts: months.map((m) => figure(m, r.category, average(r.ytd))),
-  }));
+  const amount = (m: string, row: string, ytd: number, latestAmount: number) => {
+    const typed = figures[m]?.[row];
+    if (typed !== undefined) return typed;
+    if (m !== latest) return average(ytd);
+    return complete ? latestAmount : Math.max(latestAmount, average(ytd));
+  };
+  const income = months.map((m) => amount(m, 'Income', history.ytd.income, actual.income[0]));
+  const spent = new Set(history.rows.map((r) => r.category));
+  const rowCategories = [
+    ...history.rows.map((r) => r.category),
+    ...actual.rows.filter((r) => !spent.has(r.category)).map((r) => r.category),
+    ...categories.filter((c) => !NOT_SPENDING.includes(c) && !spent.has(c) && !actual.rows.some((r) => r.category === c)).sort((a, b) => a.localeCompare(b)),
+  ];
+  const rows = rowCategories.map((category) => {
+    const ytd = history.rows.find((r) => r.category === category)?.ytd ?? 0;
+    const latestAmount = actual.rows.find((r) => r.category === category)?.amounts[0] ?? 0;
+    return { category, amounts: months.map((m) => amount(m, category, ytd, latestAmount)) };
+  });
   const totals = months.map((_, i) => rows.reduce((total, r) => total + r.amounts[i], 0));
   const closing: number[] = [];
-  if (startBalance !== null) {
-    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? startBalance) + income[i] - totals[i]);
+  if (opening !== null) {
+    const start = closingBalances(transactions, opening, [previousMonth(latest)])[0];
+    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? start) + income[i] - totals[i]);
   }
   return { months, income, rows, totals, closing };
 }
@@ -235,45 +262,53 @@ export function incomePaydays(transactions: Transaction[], endMonth: string): Pa
 }
 
 /**
- * The forecast balance at the end of each day from the day after `from` to
- * `to`, starting at `balance`. Each month's forecast spending is spread evenly
- * over its days, and its income arrives in one go on the day each source
- * usually pays. The rest of `from`'s own month, which is only partly imported,
- * spends at the monthly average and gets any income not yet received.
+ * The forecast balance at the end of each day from the day after `from`, the
+ * last day with transactions, to `to`, starting at `balance`. Each month's
+ * forecast spending is spread evenly over its days, and its income arrives in
+ * one go on the day each source usually pays. For `from`'s own month, what's
+ * left of its forecast after what has already gone out and come in is spread
+ * over the days remaining, with income still due on its payday.
  */
 export function dailyForecast(
   transactions: Transaction[],
-  history: CategoryHistory,
   figures: Record<string, Record<string, number>> | undefined,
   from: { date: string; balance: number },
   to: string,
   categories: string[] = [],
 ): { date: string; balance: number }[] {
-  const toMonth = to.slice(0, 7);
   const fromMonth = from.date.slice(0, 7);
-  let count = 0;
-  for (let m = history.months.at(-1)!; m < toMonth; m = nextMonth(m)) count++;
-  const forecast = forecastAfter(history, figures, null, count, categories);
+  let count = 1;
+  for (let m = fromMonth; m < to.slice(0, 7); m = nextMonth(m)) count++;
+  const forecast = forecastFrom(transactions, figures, null, categories, count);
   const spending = new Map(forecast.months.map((m, i) => [m, forecast.totals[i]]));
   const income = new Map(forecast.months.map((m, i) => [m, forecast.income[i]]));
-  // Rounded to whole pounds like the forecast table's averages.
-  const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
-  const averageSpending = history.rows.reduce((total, r) => total + average(r.ytd), 0);
   const paydays = incomePaydays(transactions, fromMonth);
+
+  // What's left of this month once what has already gone out and come in is taken off.
+  const actual = categoryHistory(transactions, fromMonth, 1);
+  const fromDay = Number(from.date.slice(8));
+  const daysLeft = daysInMonth(fromMonth) - fromDay;
+  const spendingLeft = Math.max(0, (spending.get(fromMonth) ?? 0) - actual.totals[0]);
+  const incomeLeft = Math.max(0, (income.get(fromMonth) ?? 0) - actual.income[0]);
   const received = new Set(transactions.filter((t) => t.category === 'Income' && t.date.startsWith(fromMonth)).map((t) => t.merchant));
+  const due = paydays.filter((p) => !received.has(p.merchant) && Math.min(p.day, daysInMonth(fromMonth)) > fromDay);
+  const dueShare = due.reduce((total, p) => total + p.share, 0);
 
   const days: { date: string; balance: number }[] = [];
   let balance = from.balance;
   for (let day = nextDay(from.date); day <= to; day = nextDay(day)) {
     const month = day.slice(0, 7);
     const length = daysInMonth(month);
-    const monthIncome = income.get(month) ?? average(history.ytd.income);
-    balance -= (spending.get(month) ?? averageSpending) / length;
-    if (paydays.length === 0) balance += monthIncome / length;
-    for (const p of paydays) {
-      if (Math.min(p.day, length) !== Number(day.slice(8))) continue;
-      if (month === fromMonth && received.has(p.merchant)) continue;
-      balance += monthIncome * p.share;
+    const date = Number(day.slice(8));
+    if (month === fromMonth) {
+      balance -= spendingLeft / daysLeft;
+      if (dueShare === 0) balance += incomeLeft / daysLeft;
+      for (const p of due) if (Math.min(p.day, length) === date) balance += (incomeLeft * p.share) / dueShare;
+    } else {
+      const monthIncome = income.get(month) ?? 0;
+      balance -= (spending.get(month) ?? 0) / length;
+      if (paydays.length === 0) balance += monthIncome / length;
+      for (const p of paydays) if (Math.min(p.day, length) === date) balance += monthIncome * p.share;
     }
     days.push({ date: day, balance: Math.round(balance) });
   }
