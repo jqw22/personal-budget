@@ -25,7 +25,7 @@ export function reviewData(data: BudgetData, today: string) {
   const essential = data.essential ?? [];
   const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
   const closing = opening === null ? null : closingBalances(data.transactions, opening, history.months);
-  const forecast = forecastAfter(history, data.forecast, closing?.at(-1) ?? null);
+  const forecast = forecastAfter(history, data.forecast, closing?.at(-1) ?? null, undefined, data.categories);
   const typeOf = (category: string) =>
     category === UNTAGGED ? 'untagged' : essential.includes(category) ? 'essential' : 'discretionary';
   // Left out of income and spending, but it moves the balance, so Claude needs it to make sense of it.

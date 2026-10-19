@@ -165,20 +165,26 @@ export interface Forecast {
 /**
  * The months after `history`'s last month: each row's monthly average this
  * year, rounded to whole pounds so totals add up to the figures shown, unless
- * the user typed in their own figure.
+ * the user typed in their own figure. Spending `categories` with nothing spent
+ * yet get a row too, so a figure can be typed in for them.
  */
 export function forecastAfter(
   history: CategoryHistory,
   figures: Record<string, Record<string, number>> = {},
   startBalance: number | null,
   count = FORECAST_MONTHS,
+  categories: string[] = [],
 ): Forecast {
   const months: string[] = [];
   for (let m = nextMonth(history.months.at(-1)!); months.length < count; m = nextMonth(m)) months.push(m);
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
   const figure = (m: string, row: string, fallback: number) => figures[m]?.[row] ?? fallback;
   const income = months.map((m) => figure(m, 'Income', average(history.ytd.income)));
-  const rows = history.rows.map((r) => ({
+  const empty = categories
+    .filter((c) => !NOT_SPENDING.includes(c) && !history.rows.some((r) => r.category === c))
+    .sort((a, b) => a.localeCompare(b))
+    .map((category) => ({ category, ytd: 0 }));
+  const rows = [...history.rows, ...empty].map((r) => ({
     category: r.category,
     amounts: months.map((m) => figure(m, r.category, average(r.ytd))),
   }));
@@ -241,12 +247,13 @@ export function dailyForecast(
   figures: Record<string, Record<string, number>> | undefined,
   from: { date: string; balance: number },
   to: string,
+  categories: string[] = [],
 ): { date: string; balance: number }[] {
   const toMonth = to.slice(0, 7);
   const fromMonth = from.date.slice(0, 7);
   let count = 0;
   for (let m = history.months.at(-1)!; m < toMonth; m = nextMonth(m)) count++;
-  const forecast = forecastAfter(history, figures, null, count);
+  const forecast = forecastAfter(history, figures, null, count, categories);
   const spending = new Map(forecast.months.map((m, i) => [m, forecast.totals[i]]));
   const income = new Map(forecast.months.map((m, i) => [m, forecast.income[i]]));
   // Rounded to whole pounds like the forecast table's averages.

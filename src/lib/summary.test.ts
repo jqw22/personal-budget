@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, closingBalances, dailyBalances, dailyForecast, groupSpending, incomePaydays, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, dailyBalances, dailyForecast, forecastAfter, groupSpending, incomePaydays, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -145,5 +145,15 @@ describe('incomePaydays', () => {
       { merchant: 'EMPLOYER', day: 25, share: 0.9 },
       { merchant: 'RENT IN', day: 10, share: 0.1 },
     ]);
+  });
+});
+
+describe('forecastAfter', () => {
+  it('adds a row for each spending category with nothing spent yet, using any figure typed in', () => {
+    const history = categoryHistory(transactions, '2026-06', 2);
+    const forecast = forecastAfter(history, { '2026-07': { Holidays: 50000 } }, null, 2, ['Living/Food', 'Holidays', 'Drinks', 'Income', 'Transfers']);
+    expect(forecast.rows.map((r) => r.category).slice(-2)).toEqual(['Drinks', 'Holidays']);
+    expect(forecast.rows.find((r) => r.category === 'Holidays')!.amounts).toEqual([50000, 0]);
+    expect(forecast.rows.some((r) => r.category === 'Income' || r.category === 'Transfers')).toBe(false);
   });
 });

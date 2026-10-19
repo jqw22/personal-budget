@@ -79,7 +79,7 @@ export function ForecastTable({ data, history, startBalance, onChange }: Props) 
     onChange({ ...data, forecast: next });
   }
 
-  const { months, income, rows, totals, closing } = forecastAfter(history, forecast, startBalance);
+  const { months, income, rows, totals, closing } = forecastAfter(history, forecast, startBalance, undefined, data.categories);
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
   const edited = months.some((m) => Object.keys(forecast[m] ?? {}).length > 0);
 
