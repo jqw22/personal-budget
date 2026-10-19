@@ -190,7 +190,7 @@ function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (
 
   return (
     <>
-      <h3>Claude insights</h3>
+      <h3>Dad's insights</h3>
       <p className="muted small">
         Your Anthropic API key, from{' '}
         <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">

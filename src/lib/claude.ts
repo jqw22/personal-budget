@@ -25,10 +25,10 @@ export async function withClaude<T>(data: BudgetData, call: (client: Anthropic) 
       throw new ClaudeError("Your Anthropic API key wasn't accepted. Check it in Account.");
     }
     if (e instanceof Client.RateLimitError) throw new ClaudeError('Too many requests just now. Wait a minute and try again.');
-    if (e instanceof Client.APIConnectionError) throw new ClaudeError("Couldn't reach Claude. Check your connection and try again.");
+    if (e instanceof Client.APIConnectionError) throw new ClaudeError("Couldn't reach Dad. Check your connection and try again.");
     if (e instanceof Client.APIError) {
       const credit = /credit balance/i.test(e.message);
-      throw new ClaudeError(credit ? 'Your Anthropic account is out of credit. Top it up at console.anthropic.com.' : `Claude returned an error: ${e.message}`);
+      throw new ClaudeError(credit ? 'Your Anthropic account is out of credit. Top it up at console.anthropic.com.' : `Dad returned an error: ${e.message}`);
     }
     throw e;
   }
@@ -36,12 +36,12 @@ export async function withClaude<T>(data: BudgetData, call: (client: Anthropic) 
 
 /** The text of a finished reply, or a ClaudeError if Claude declined or sent nothing. */
 export function replyText(message: Anthropic.Beta.BetaMessage): string {
-  if (message.stop_reason === 'refusal') throw new ClaudeError("Claude declined this time. Try again.");
+  if (message.stop_reason === 'refusal') throw new ClaudeError("Dad declined this time. Try again.");
   const text = message.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text)
     .join('');
-  if (!text.trim()) throw new ClaudeError('Claude sent back an empty reply. Try again.');
+  if (!text.trim()) throw new ClaudeError('Dad sent back an empty reply. Try again.');
   return text;
 }
 

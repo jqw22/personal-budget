@@ -115,12 +115,12 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
           <button className="link inline-link" onClick={onOpenAccount}>
             Account
           </button>{' '}
-          to get insights from Claude.
+          to get insights from Dad.
         </p>
       ) : (
         <button
           className="primary"
-          title="Sends Claude your monthly totals, balances, forecast, goals and the last three months of transactions (date, merchant, category and amount, not the full bank description)"
+          title="Sends Dad your monthly totals, balances, forecast, goals and the last three months of transactions (date, merchant, category and amount, not the full bank description)"
           disabled={busy || data.transactions.length === 0}
           onClick={review}
         >
@@ -135,11 +135,13 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
               {new Date(data.insight.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
-          {shown ? <Markdown text={shown} /> : <p className="muted">Claude is looking at your figures…</p>}
+          {shown ? <Markdown text={shown} /> : <p className="muted">Dad is looking at your figures…</p>}
           {followUps.map((f, i) => (
             <div key={i} className="follow-up">
-              <p className="question">{f.question}</p>
-              {f.answer ? <Markdown text={f.answer} /> : <p className="muted">Claude is thinking…</p>}
+              <p className="question" aria-label="You said">
+                {f.question}
+              </p>
+              {f.answer ? <Markdown text={f.answer} /> : <p className="muted">Dad is thinking…</p>}
             </div>
           ))}
         </div>
@@ -163,7 +165,7 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
               }
             }}
             placeholder="Reply to clear up a point, e.g. The holiday in July was a one-off"
-            aria-label="Reply to Claude"
+            aria-label="Reply to Dad"
           />
           <button type="submit" disabled={busy || !question.trim()}>
             {answering ? 'Sending…' : 'Send'}

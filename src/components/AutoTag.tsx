@@ -47,12 +47,12 @@ export function AutoTag({ data, onChange }: Props) {
           disabled={busy || !data.anthropicKey}
           title={
             data.anthropicKey
-              ? 'Sends Claude each untagged merchant name with how often and how much, plus your categories and rules'
+              ? 'Sends Dad each untagged merchant name with how often and how much, plus your categories and rules'
               : 'Add your Anthropic API key in Account to use this'
           }
           onClick={suggest}
         >
-          {busy ? 'Asking Claude…' : 'Suggest tags with Claude'}
+          {busy ? 'Asking Dad…' : 'Suggest tags with Dad'}
         </button>
         {error && <p className="warning">{error}</p>}
       </>

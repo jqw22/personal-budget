@@ -633,13 +633,20 @@ form.add-goal input {
 }
 
 .follow-up {
-  border-top: 1px solid var(--border);
-  margin-top: 12px;
-  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
 }
 
+/* Your replies sit on the right in a coloured bubble, like a chat. */
 .follow-up .question {
-  font-weight: 600;
+  align-self: flex-end;
+  max-width: 80%;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--accent);
+  color: var(--accent-text);
   white-space: pre-wrap;
 }
 
