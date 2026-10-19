@@ -192,11 +192,7 @@ function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (
     <>
       <h3>Dad's insights</h3>
       <p className="muted small">
-        Your Anthropic API key, from{' '}
-        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-          console.anthropic.com
-        </a>
-        . It's kept with your budget
+        Your API key is kept with your budget
         {signedIn ? ', encrypted on your relays, so it works on your other devices too' : ' on this device'}.
       </p>
       {saved ? (
