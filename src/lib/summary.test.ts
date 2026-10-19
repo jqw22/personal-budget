@@ -79,7 +79,7 @@ describe('groupSpending', () => {
 describe('dailyBalances', () => {
   it('gives the balance at the end of every day from the first transaction to the last', () => {
     const list = [tx('2026-05-30', -500, null), tx('2026-05-30', -500, null), tx('2026-06-02', 2000, null)];
-    expect(dailyBalances(list, 10000, '2026')).toEqual([
+    expect(dailyBalances(list, 10000, '2026-01-01', '2026-12-31')).toEqual([
       { date: '2026-05-30', balance: 9000 },
       { date: '2026-05-31', balance: 9000 },
       { date: '2026-06-01', balance: 9000 },
@@ -87,9 +87,9 @@ describe('dailyBalances', () => {
     ]);
   });
 
-  it('carries in last year as the balance on 1 January', () => {
+  it('carries in everything before the range as the balance on its first day', () => {
     const list = [tx('2025-12-31', -500, null), tx('2026-01-02', -100, null)];
-    expect(dailyBalances(list, 1000, '2026')).toEqual([
+    expect(dailyBalances(list, 1000, '2026-01-01', '2026-12-31')).toEqual([
       { date: '2026-01-01', balance: 500 },
       { date: '2026-01-02', balance: 400 },
     ]);

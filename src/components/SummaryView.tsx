@@ -1,6 +1,18 @@
 import { Fragment, useMemo, useState } from 'react';
 import { formatMoney, formatMonth, formatPounds } from '../lib/format';
-import { categoryHistory, closingBalances, dailyBalances, dailyForecast, groupSpending, monthsWithData, UNTAGGED } from '../lib/summary';
+import {
+  categoryHistory,
+  closingBalances,
+  dailyBalances,
+  dailyForecast,
+  FORECAST_MONTHS,
+  groupSpending,
+  lastDayOf,
+  monthsWithData,
+  nextMonth,
+  previousMonth,
+  UNTAGGED,
+} from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
 import { BalanceChart } from './BalanceChart';
 import type { BudgetData } from '../lib/types';
@@ -15,6 +27,8 @@ interface Props {
 
 /** How many months the category table shows, ending at the chosen month. */
 const MONTHS_SHOWN = 4;
+/** How many months of actual balances the chart shows, ending at the latest. */
+const CHART_MONTHS_BACK = 12;
 
 /** Signed money for the under / over spend line. */
 function net(amount: number): string {
@@ -54,14 +68,15 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const average = (amount: number) => (history?.ytd.months ? Math.round(amount / history.ytd.months) : 0);
   const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
   const closing = history && opening !== null ? closingBalances(data.transactions, opening, history.months) : null;
-  const year = month.slice(0, 4);
-  const days = opening === null ? [] : dailyBalances(data.transactions, opening, year);
+  // The latest 12 months with data and the forecast's months after them, whichever month the tables show.
+  const latest = months[months.length - 1];
+  const chartMonths = [latest];
+  while (chartMonths.length < CHART_MONTHS_BACK) chartMonths.unshift(previousMonth(chartMonths[0]));
+  while (chartMonths.length < CHART_MONTHS_BACK + FORECAST_MONTHS) chartMonths.push(nextMonth(chartMonths[chartMonths.length - 1]));
+  const chartEnd = lastDayOf(chartMonths[chartMonths.length - 1]);
+  const days = opening === null ? [] : dailyBalances(data.transactions, opening, `${chartMonths[0]}-01`, chartEnd);
   const lastActual = days.at(-1);
-  // From the latest transaction to the end of the year, whichever month the tables show.
-  const forecast =
-    lastActual && lastActual.date === data.transactions.at(-1)!.date && lastActual.date < `${year}-12-31`
-      ? dailyForecast(categoryHistory(data.transactions, months.at(-1)!, 1), data.forecast, lastActual, `${year}-12-31`)
-      : [];
+  const forecast = lastActual ? dailyForecast(categoryHistory(data.transactions, latest, 1), data.forecast, lastActual, chartEnd) : [];
   const yearCells = (amount: number, header = false) => {
     const Cell = header ? 'th' : 'td';
     return (
@@ -242,7 +257,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
 
       {history && history.rows.length > 0 && <ForecastTable data={data} history={history} startBalance={closing?.at(-1) ?? null} onChange={onChange} />}
 
-      {opening !== null && <BalanceChart year={year} days={days} forecast={forecast} />}
+      {opening !== null && <BalanceChart months={chartMonths} days={days} forecast={forecast} />}
     </section>
   );
 }

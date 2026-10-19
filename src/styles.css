@@ -654,7 +654,16 @@ form.reply {
   display: flex;
   gap: 8px;
   align-items: flex-end;
-  margin-top: 8px;
+  margin-top: 12px;
+}
+
+.insight .review.earlier {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+
+.insight .follow-up:first-of-type {
+  margin-top: 0;
 }
 
 form.reply textarea {
@@ -682,4 +691,15 @@ form.reply textarea {
 
 .balance-chart .dot.forecast {
   opacity: 0.75;
+}
+
+.balance-chart .threshold {
+  stroke: var(--warn-text);
+  stroke-width: 1;
+  stroke-dasharray: 6 3;
+}
+
+.balance-chart .threshold-label {
+  fill: var(--warn-text);
+  font-size: 11px;
 }

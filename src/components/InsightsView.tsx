@@ -127,25 +127,6 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
           {writing !== null ? 'Writing…' : data.insight ? 'Get new insights' : 'Get insights'}
         </button>
       )}
-      {shown !== undefined && (
-        <div className="insight">
-          {writing === null && data.insight && (
-            <p className="muted small">
-              Written{' '}
-              {new Date(data.insight.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </p>
-          )}
-          {shown ? <Markdown text={shown} /> : <p className="muted">Dad is looking at your figures…</p>}
-          {followUps.map((f, i) => (
-            <div key={i} className="follow-up">
-              <p className="question" aria-label="You said">
-                {f.question}
-              </p>
-              {f.answer ? <Markdown text={f.answer} /> : <p className="muted">Dad is thinking…</p>}
-            </div>
-          ))}
-        </div>
-      )}
       {data.insight && writing === null && data.anthropicKey && (
         <form
           className="reply"
@@ -171,6 +152,28 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
             {answering ? 'Sending…' : 'Send'}
           </button>
         </form>
+      )}
+      {shown !== undefined && (
+        <div className="insight">
+          {/* Newest first: your latest reply and Dad's answer at the top, the review itself at the bottom. */}
+          {[...followUps].reverse().map((f, i) => (
+            <div key={followUps.length - i} className="follow-up">
+              <p className="question" aria-label="You said">
+                {f.question}
+              </p>
+              {f.answer ? <Markdown text={f.answer} /> : <p className="muted">Dad is thinking…</p>}
+            </div>
+          ))}
+          <div className={followUps.length ? 'review earlier' : 'review'}>
+            {writing === null && data.insight && (
+              <p className="muted small">
+                Written{' '}
+                {new Date(data.insight.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+            {shown ? <Markdown text={shown} /> : <p className="muted">Dad is looking at your figures…</p>}
+          </div>
+        </div>
       )}
       {error && <p className="warning">{error}</p>}
     </section>
