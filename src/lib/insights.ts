@@ -106,7 +106,7 @@ export async function getInsights(data: BudgetData, today: string, onText: (text
 /** Asks Claude about its last review, with the conversation so far. `onText` receives the answer as it's written. */
 export async function askFollowUp(data: BudgetData, today: string, question: string, onText: (text: string) => void): Promise<string> {
   const insight = data.insight;
-  if (!insight) throw new ClaudeError('Get insights first.');
+  if (!insight) throw new ClaudeError('Ask Dad first.');
   const turns: MessageParam[] = [{ role: 'assistant', content: insight.text }];
   for (const f of insight.followUps ?? []) turns.push({ role: 'user', content: f.question }, { role: 'assistant', content: f.answer });
   turns.push({ role: 'user', content: question });

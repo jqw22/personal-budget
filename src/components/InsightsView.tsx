@@ -132,7 +132,7 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
             disabled={busy || data.transactions.length === 0}
             onClick={review}
           >
-            {writing !== null ? 'Writing…' : data.insight ? 'Get new insights' : 'Get insights'}
+            {writing !== null ? 'Writing…' : 'Ask Dad'}
           </button>
           {data.insight &&
             !busy &&
