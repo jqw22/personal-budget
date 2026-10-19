@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { newSecretKey, npub } from '../lib/nostr';
+import type { BudgetData } from '../lib/types';
 import type { useSync } from '../lib/useSync';
 
 interface Props {
   sync: ReturnType<typeof useSync>;
+  data: BudgetData;
+  onChange: (data: BudgetData) => void;
 }
 
 function shortNpub(pubkey: string): string {
@@ -26,7 +29,7 @@ export function syncLabel(state: Props['sync']['state']): string {
   }
 }
 
-export function AccountView({ sync }: Props) {
+export function AccountView({ sync, data, onChange }: Props) {
   const { signer, state, account } = sync;
   const [nsec, setNsec] = useState('');
   const [remember, setRemember] = useState(true);
@@ -50,6 +53,8 @@ export function AccountView({ sync }: Props) {
     .split(/\s+/)
     .map((r) => r.trim())
     .filter((r) => /^wss?:\/\/./.test(r));
+
+  const claudeSettings = <ClaudeKey data={data} onChange={onChange} signedIn={Boolean(signer)} />;
 
   const relaySettings = (
     <>
@@ -104,6 +109,7 @@ export function AccountView({ sync }: Props) {
             get it.
           </p>
         )}
+        {claudeSettings}
         {relaySettings}
       </section>
     );
@@ -171,7 +177,57 @@ export function AccountView({ sync }: Props) {
         <button onClick={() => setCreated(newSecretKey().nsec)}>Create a key</button>
       )}
 
+      {claudeSettings}
       {relaySettings}
     </section>
+  );
+}
+
+/** The user's own Anthropic API key, which the Insights tab uses to ask Claude for a review. */
+function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (data: BudgetData) => void; signedIn: boolean }) {
+  const [key, setKey] = useState('');
+  const { anthropicKey: saved, ...rest } = data;
+
+  return (
+    <>
+      <h3>Claude insights</h3>
+      <p className="muted small">
+        Your Anthropic API key, from{' '}
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+          console.anthropic.com
+        </a>
+        . It's kept with your budget
+        {signedIn ? ', encrypted on your relays, so it works on your other devices too' : ' on this device'}.
+      </p>
+      {saved ? (
+        <div className="actions saved-key">
+          <code>
+            {saved.slice(0, 10)}…{saved.slice(-4)}
+          </code>
+          <button onClick={() => onChange(rest)}>Remove key</button>
+        </div>
+      ) : (
+        <form
+          className="signin"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onChange({ ...data, anthropicKey: key.trim() });
+            setKey('');
+          }}
+        >
+          <input
+            type="password"
+            autoComplete="off"
+            placeholder="sk-ant-…"
+            aria-label="Anthropic API key"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+          />
+          <button type="submit" disabled={!key.trim().startsWith('sk-ant-')}>
+            Save key
+          </button>
+        </form>
+      )}
+    </>
   );
 }

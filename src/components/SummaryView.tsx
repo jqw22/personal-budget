@@ -232,7 +232,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         </div>
       )}
 
-      {history && history.rows.length > 0 && <ForecastTable data={data} history={history} month={month} startBalance={closing?.at(-1) ?? null} onChange={onChange} />}
+      {history && history.rows.length > 0 && <ForecastTable data={data} history={history} startBalance={closing?.at(-1) ?? null} onChange={onChange} />}
 
       {opening !== null && <BalanceChart year={month.slice(0, 4)} days={dailyBalances(data.transactions, opening, month.slice(0, 4))} />}
     </section>

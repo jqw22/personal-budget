@@ -578,3 +578,48 @@ table.categories td {
 .chart-tooltip span {
   color: var(--muted);
 }
+
+table.goals td {
+  vertical-align: middle;
+}
+
+form.add-goal {
+  margin: 8px 0 16px;
+}
+
+form.add-goal input {
+  flex: 1;
+  min-width: 0;
+}
+
+.insight {
+  margin-top: 12px;
+  padding: 4px 16px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.markdown h3 {
+  margin: 16px 0 4px;
+  font-size: 1rem;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol {
+  margin: 4px 0 8px;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 20px;
+}
+
+.markdown li {
+  margin-bottom: 4px;
+}
+
+.actions.saved-key {
+  align-items: center;
+}

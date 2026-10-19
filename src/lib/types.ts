@@ -22,6 +22,20 @@ export interface Rule {
   category: string;
 }
 
+export interface Goal {
+  id: string;
+  /** In the user's own words, e.g. "Save £3,000 for a holiday by June". */
+  text: string;
+}
+
+/** The last review Claude wrote, kept so it's still there next time. */
+export interface Insight {
+  /** When it was written, as an ISO timestamp. */
+  at: string;
+  /** Markdown. */
+  text: string;
+}
+
 export interface BudgetData {
   transactions: Transaction[];
   rules: Rule[];
@@ -35,6 +49,11 @@ export interface BudgetData {
   forecast?: Record<string, Record<string, number>>;
   /** Balance before the first transaction, in pence, typed in by the user for the running balance in downloads. */
   openingBalance?: number;
+  /** Financial goals the insights review checks progress against. */
+  goals?: Goal[];
+  /** The user's own Anthropic API key, for the insights review. */
+  anthropicKey?: string;
+  insight?: Insight;
   /** Data format version, so saved data can be upgraded when defaults change. */
   version?: number;
 }

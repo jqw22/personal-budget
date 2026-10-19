@@ -15,7 +15,7 @@ const SETTINGS = `${PREFIX}settings`;
 const PART_BYTES = 20000;
 
 function settingsJson(data: BudgetData): string {
-  return JSON.stringify({ version: data.version, categories: data.categories, essential: data.essential, rules: data.rules, forecast: data.forecast, openingBalance: data.openingBalance });
+  return JSON.stringify({ version: data.version, categories: data.categories, essential: data.essential, rules: data.rules, forecast: data.forecast, openingBalance: data.openingBalance, goals: data.goals, anthropicKey: data.anthropicKey, insight: data.insight });
 }
 
 export function isOurs(d: string): boolean {
@@ -66,9 +66,9 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     transactions.push(...(JSON.parse(plaintext).transactions as Transaction[]));
   }
   if (!settings && transactions.length === 0) return null;
-  const { version, categories, essential, rules, forecast, openingBalance } = settings
+  const { version, categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight } = settings
     ? JSON.parse(settings)
-    : { version: undefined, categories: [], essential: undefined, rules: [], forecast: undefined, openingBalance: undefined };
+    : { version: undefined, categories: [], rules: [] };
   return migrate({
     version,
     categories,
@@ -76,6 +76,9 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     rules,
     ...(forecast ? { forecast } : {}),
     ...(openingBalance !== undefined ? { openingBalance } : {}),
+    ...(goals ? { goals } : {}),
+    ...(anthropicKey ? { anthropicKey } : {}),
+    ...(insight ? { insight } : {}),
     transactions: dedupe(transactions).sort((a, b) => a.date.localeCompare(b.date)),
   });
 }
@@ -110,11 +113,17 @@ function isUntouched(data: BudgetData): boolean {
   );
 }
 
-/** Every category and rule from both sides; this device's rule wins where both match the same merchant. */
+/**
+ * Every category, rule and goal from both sides; this device's rule wins where both match the same
+ * merchant, and the newer insights review is kept.
+ */
 function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
   const rules: Rule[] = [...local.rules];
   const known = new Set(local.rules.map((r) => r.match.toUpperCase()));
   for (const r of remote.rules) if (!known.has(r.match.toUpperCase())) rules.push(r);
+  const goalIds = new Set((local.goals ?? []).map((g) => g.id));
+  const goals = [...(local.goals ?? []), ...(remote.goals ?? []).filter((g) => !goalIds.has(g.id))];
+  const insight = !local.insight || (remote.insight && remote.insight.at > local.insight.at) ? remote.insight : local.insight;
   return {
     ...local,
     categories: [...new Set([...local.categories, ...remote.categories])],
@@ -122,6 +131,9 @@ function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
     rules,
     forecast: mergeForecast(local.forecast, remote.forecast),
     openingBalance: local.openingBalance ?? remote.openingBalance,
+    goals: local.goals || remote.goals ? goals : undefined,
+    anthropicKey: local.anthropicKey ?? remote.anthropicKey,
+    insight,
   };
 }
 
@@ -142,7 +154,7 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
   // A device that has never been used only has the starting categories, so it takes the saved ones
   // as they are rather than adding back defaults the user removed or renamed.
   if (isUntouched(local)) return remote;
-  const { categories, essential, rules, forecast, openingBalance } = mergeSettings(local, remote);
+  const { categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight } = mergeSettings(local, remote);
   const byId = new Map(local.transactions.map((t) => [t.id, t]));
   for (const t of remote.transactions) {
     const mine = byId.get(t.id);
@@ -157,6 +169,9 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
     rules,
     ...(forecast ? { forecast } : {}),
     ...(openingBalance !== undefined ? { openingBalance } : {}),
+    ...(goals ? { goals } : {}),
+    ...(anthropicKey ? { anthropicKey } : {}),
+    ...(insight ? { insight } : {}),
     transactions: applyRules(transactions, rules),
   };
 }
@@ -173,7 +188,7 @@ export function applyRemote(local: BudgetData, base: Map<string, string>, incomi
     const remote = { ...local, ...JSON.parse(settings) } as BudgetData;
     const unchangedHere = !base.has(SETTINGS) || base.get(SETTINGS) === settingsJson(local);
     next = unchangedHere
-      ? { ...local, categories: remote.categories, essential: remote.essential, rules: remote.rules, forecast: remote.forecast, openingBalance: remote.openingBalance }
+      ? { ...local, categories: remote.categories, essential: remote.essential, rules: remote.rules, forecast: remote.forecast, openingBalance: remote.openingBalance, goals: remote.goals, anthropicKey: remote.anthropicKey, insight: remote.insight }
       : mergeSettings(local, remote);
   }
 
