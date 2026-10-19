@@ -24,6 +24,7 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
   const [question, setQuestion] = useState('');
   /** A reply being answered, and the answer so far. */
   const [answering, setAnswering] = useState<{ question: string; answer: string } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const goals = data.goals ?? [];
 
   function addGoal() {
@@ -61,6 +62,12 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
     } finally {
       setAnswering(null);
     }
+  }
+
+  function clear() {
+    const { insight: _, ...rest } = data;
+    onChange(rest);
+    setConfirmClear(false);
   }
 
   const shown = writing ?? data.insight?.text;
@@ -118,14 +125,30 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
           to get insights from Dad.
         </p>
       ) : (
-        <button
-          className="primary"
-          title="Sends Dad your monthly totals, balances, forecast, goals and the last three months of transactions (date, merchant, category and amount, not the full bank description)"
-          disabled={busy || data.transactions.length === 0}
-          onClick={review}
-        >
-          {writing !== null ? 'Writing…' : data.insight ? 'Get new insights' : 'Get insights'}
-        </button>
+        <div className="actions insight-actions">
+          <button
+            className="primary"
+            title="Sends Dad your monthly totals, balances, forecast, goals and the last three months of transactions (date, merchant, category and amount, not the full bank description)"
+            disabled={busy || data.transactions.length === 0}
+            onClick={review}
+          >
+            {writing !== null ? 'Writing…' : data.insight ? 'Get new insights' : 'Get insights'}
+          </button>
+          {data.insight &&
+            !busy &&
+            (confirmClear ? (
+              <>
+                <button className="danger" onClick={clear}>
+                  Yes, clear it
+                </button>
+                <button onClick={() => setConfirmClear(false)}>Cancel</button>
+              </>
+            ) : (
+              <button title="Remove this review and your replies to it" onClick={() => setConfirmClear(true)}>
+                Clear
+              </button>
+            ))}
+        </div>
       )}
       {data.insight && writing === null && data.anthropicKey && (
         <form

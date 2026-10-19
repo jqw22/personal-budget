@@ -703,3 +703,11 @@ form.reply textarea {
   fill: var(--warn-text);
   font-size: 11px;
 }
+
+.actions.insight-actions {
+  align-items: center;
+}
+
+.actions.insight-actions button.primary {
+  margin-top: 0;
+}
