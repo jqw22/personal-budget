@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AutoTag } from './AutoTag';
 import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, upsertRule } from '../lib/rules';
 import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
@@ -87,6 +88,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
       <p className="muted">
         {untagged === 0 ? 'Everything is tagged.' : `${untagged} of ${data.transactions.length} still need a category.`}
       </p>
+      {untagged > 0 && <AutoTag data={data} onChange={onChange} />}
       <div className="filters">
         <select value={month} onChange={(e) => setMonth(e.target.value)}>
           <option value="all">All months</option>

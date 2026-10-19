@@ -34,6 +34,8 @@ export interface Insight {
   at: string;
   /** Markdown. */
   text: string;
+  /** The user's replies to the review and Claude's answers, oldest first. */
+  followUps?: { question: string; answer: string }[];
 }
 
 export interface BudgetData {

@@ -3,8 +3,8 @@ import { reviewData } from './insights';
 import { emptyData } from './store';
 import type { Transaction } from './types';
 
-const t = (id: string, date: string, amount: number, category: string | null, description = 'MR J SMITH CAFE'): Transaction => ({
-  id, date, description, merchant: description, amount, balance: null, category, categorySource: category ? 'manual' : null,
+const t = (id: string, date: string, amount: number, category: string | null, merchant = 'CAFE NERO'): Transaction => ({
+  id, date, description: `${merchant} REF 99887766 ON 01-06-2026`, merchant, amount, balance: null, category, categorySource: category ? 'manual' : null,
 });
 
 const data = {
@@ -40,9 +40,26 @@ describe('reviewData', () => {
     expect(review.goals).toEqual(['Save £3,000 by June']);
   });
 
-  it('leaves out descriptions and payees', () => {
-    const sent = JSON.stringify(review);
-    for (const name of ['SMITH', 'BLOGGS', 'ACME', 'CAFE']) expect(sent).not.toContain(name);
+  it('sends the last three months of transactions as merchant and amount, without the full description', () => {
+    expect(review.transactions).toEqual([
+      '2026-05-01|ACME PAYROLL|Income|2000.00',
+      '2026-05-02|LANDLORD J BLOGGS|Rent & bills|-800.00',
+      '2026-05-10|CAFE NERO|Going Out|-50.50',
+      '2026-06-01|ACME PAYROLL|Income|2000.00',
+      '2026-06-02|LANDLORD J BLOGGS|Rent & bills|-800.00',
+      '2026-06-12|CAFE NERO|Going Out|-70.00',
+      '2026-06-15|CAFE NERO|Untagged|-10.00',
+    ]);
+    expect(JSON.stringify(review)).not.toContain('99887766');
+    // Three calendar months, ending at the latest: July to September.
+    const later = reviewData({ ...data, transactions: [...data.transactions, t('h', '2026-09-01', -100, null)] }, '2026-09-02')!;
+    expect(later.transactions.map((x) => x.slice(0, 7))).toEqual(['2026-09']);
+  });
+
+  it("passes on what the user said about the last review", () => {
+    const insight = { at: '2026-06-20T10:00:00Z', text: 'review', followUps: [{ question: 'Going Out in June was a birthday', answer: 'Noted' }] };
+    expect(reviewData({ ...data, insight }, '2026-07-20')!.notesFromLastReview).toEqual(['Going Out in June was a birthday']);
+    expect(review).not.toHaveProperty('notesFromLastReview');
   });
 
   it('is null with no transactions', () => {

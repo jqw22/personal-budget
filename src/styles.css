@@ -623,3 +623,47 @@ form.add-goal input {
 .actions.saved-key {
   align-items: center;
 }
+
+.auto-tag {
+  margin-bottom: 16px;
+}
+
+.auto-tag h3 {
+  margin-bottom: 0;
+}
+
+.follow-up {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 4px;
+}
+
+.follow-up .question {
+  font-weight: 600;
+  white-space: pre-wrap;
+}
+
+form.reply {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+
+form.reply textarea {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  resize: vertical;
+}
+
+.auto-tag td {
+  vertical-align: middle;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { getInsights, InsightError } from '../lib/insights';
+import { ClaudeError } from '../lib/claude';
+import { askFollowUp, getInsights } from '../lib/insights';
 import type { BudgetData, Insight } from '../lib/types';
 import { Markdown } from './Markdown';
 
@@ -20,6 +21,9 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
   const [goal, setGoal] = useState('');
   const [writing, setWriting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [question, setQuestion] = useState('');
+  /** A reply being answered, and the answer so far. */
+  const [answering, setAnswering] = useState<{ question: string; answer: string } | null>(null);
   const goals = data.goals ?? [];
 
   function addGoal() {
@@ -36,13 +40,32 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
       const text = await getInsights(data, today(), setWriting);
       onInsight({ at: new Date().toISOString(), text });
     } catch (e) {
-      setError(e instanceof InsightError ? e.message : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`);
+      setError(e instanceof ClaudeError ? e.message : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setWriting(null);
     }
   }
 
+  async function reply() {
+    const insight = data.insight;
+    const text = question.trim();
+    if (!insight || !text) return;
+    setError(null);
+    setAnswering({ question: text, answer: '' });
+    try {
+      const answer = await askFollowUp(data, today(), text, (so) => setAnswering({ question: text, answer: so }));
+      onInsight({ ...insight, followUps: [...(insight.followUps ?? []), { question: text, answer }] });
+      setQuestion('');
+    } catch (e) {
+      setError(e instanceof ClaudeError ? e.message : `Something went wrong: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setAnswering(null);
+    }
+  }
+
   const shown = writing ?? data.insight?.text;
+  const busy = writing !== null || answering !== null;
+  const followUps = writing === null ? [...(data.insight?.followUps ?? []), ...(answering ? [answering] : [])] : [];
 
   return (
     <section>
@@ -97,14 +120,13 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
       ) : (
         <button
           className="primary"
-          title="Sends Claude your monthly totals, balances, forecast and goals, but no transaction descriptions or payees"
-          disabled={writing !== null || data.transactions.length === 0}
+          title="Sends Claude your monthly totals, balances, forecast, goals and the last three months of transactions (date, merchant, category and amount, not the full bank description)"
+          disabled={busy || data.transactions.length === 0}
           onClick={review}
         >
           {writing !== null ? 'Writing…' : data.insight ? 'Get new insights' : 'Get insights'}
         </button>
       )}
-      {error && <p className="warning">{error}</p>}
       {shown !== undefined && (
         <div className="insight">
           {writing === null && data.insight && (
@@ -114,8 +136,41 @@ export function InsightsView({ data, onChange, onInsight, onOpenAccount }: Props
             </p>
           )}
           {shown ? <Markdown text={shown} /> : <p className="muted">Claude is looking at your figures…</p>}
+          {followUps.map((f, i) => (
+            <div key={i} className="follow-up">
+              <p className="question">{f.question}</p>
+              {f.answer ? <Markdown text={f.answer} /> : <p className="muted">Claude is thinking…</p>}
+            </div>
+          ))}
         </div>
       )}
+      {data.insight && writing === null && data.anthropicKey && (
+        <form
+          className="reply"
+          onSubmit={(e) => {
+            e.preventDefault();
+            reply();
+          }}
+        >
+          <textarea
+            rows={2}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                reply();
+              }
+            }}
+            placeholder="Reply to clear up a point, e.g. The holiday in July was a one-off"
+            aria-label="Reply to Claude"
+          />
+          <button type="submit" disabled={busy || !question.trim()}>
+            {answering ? 'Sending…' : 'Send'}
+          </button>
+        </form>
+      )}
+      {error && <p className="warning">{error}</p>}
     </section>
   );
 }
