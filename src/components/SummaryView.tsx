@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { formatMoney, formatMonth, formatPounds } from '../lib/format';
-import { categoryHistory, closingBalances, dailyBalances, groupSpending, monthsWithData, UNTAGGED } from '../lib/summary';
+import { categoryHistory, closingBalances, dailyBalances, dailyForecast, groupSpending, monthsWithData, UNTAGGED } from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
 import { BalanceChart } from './BalanceChart';
 import type { BudgetData } from '../lib/types';
@@ -54,6 +54,14 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const average = (amount: number) => (history?.ytd.months ? Math.round(amount / history.ytd.months) : 0);
   const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
   const closing = history && opening !== null ? closingBalances(data.transactions, opening, history.months) : null;
+  const year = month.slice(0, 4);
+  const days = opening === null ? [] : dailyBalances(data.transactions, opening, year);
+  const lastActual = days.at(-1);
+  // From the latest transaction to the end of the year, whichever month the tables show.
+  const forecast =
+    lastActual && lastActual.date === data.transactions.at(-1)!.date && lastActual.date < `${year}-12-31`
+      ? dailyForecast(categoryHistory(data.transactions, months.at(-1)!, 1), data.forecast, lastActual, `${year}-12-31`)
+      : [];
   const yearCells = (amount: number, header = false) => {
     const Cell = header ? 'th' : 'td';
     return (
@@ -234,7 +242,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
 
       {history && history.rows.length > 0 && <ForecastTable data={data} history={history} startBalance={closing?.at(-1) ?? null} onChange={onChange} />}
 
-      {opening !== null && <BalanceChart year={month.slice(0, 4)} days={dailyBalances(data.transactions, opening, month.slice(0, 4))} />}
+      {opening !== null && <BalanceChart year={year} days={days} forecast={forecast} />}
     </section>
   );
 }

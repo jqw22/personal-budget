@@ -6,6 +6,8 @@ interface Props {
   year: string;
   /** End-of-day balances in pence, oldest first. */
   days: { date: string; balance: number }[];
+  /** Forecast end-of-day balances after the last actual day, drawn dashed. */
+  forecast?: { date: string; balance: number }[];
 }
 
 const HEIGHT = 240;
@@ -29,7 +31,7 @@ function dayOfYear(date: string, year: string): number {
 }
 
 /** The balance at the end of each day across the calendar year, as a line. */
-export function BalanceChart({ year, days }: Props) {
+export function BalanceChart({ year, days, forecast = [] }: Props) {
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   const [hover, setHover] = useState<number | null>(null);
@@ -45,21 +47,24 @@ export function BalanceChart({ year, days }: Props) {
   if (days.length === 0) return null;
 
   const yearDays = dayOfYear(`${year}-12-31`, year) + 1;
-  const balances = days.map((d) => d.balance);
+  const points = [...days, ...forecast];
+  const balances = points.map((d) => d.balance);
   const yTicks = ticks(Math.min(0, ...balances), Math.max(...balances));
   const [yMin, yMax] = [yTicks[0], yTicks.at(-1)!];
   const plotW = width - PAD.left - PAD.right;
   const plotH = HEIGHT - PAD.top - PAD.bottom;
   const x = (date: string) => PAD.left + ((dayOfYear(date, year) + 0.5) / yearDays) * plotW;
   const y = (pence: number) => PAD.top + (1 - (pence - yMin) / (yMax - yMin)) * plotH;
-  const path = days.map((d, i) => `${i ? 'L' : 'M'}${x(d.date).toFixed(1)},${y(d.balance).toFixed(1)}`).join('');
-  const point = hover === null ? null : days[hover];
+  const line = (list: { date: string; balance: number }[]) =>
+    list.map((d, i) => `${i ? 'L' : 'M'}${x(d.date).toFixed(1)},${y(d.balance).toFixed(1)}`).join('');
+  const point = hover === null ? null : points[hover];
+  const forecasting = hover !== null && hover >= days.length;
 
   function onMove(e: React.PointerEvent<SVGRectElement>) {
     const box = e.currentTarget.getBoundingClientRect();
     const px = e.clientX - box.left + PAD.left;
     let nearest = 0;
-    for (let i = 1; i < days.length; i++) if (Math.abs(x(days[i].date) - px) < Math.abs(x(days[nearest].date) - px)) nearest = i;
+    for (let i = 1; i < points.length; i++) if (Math.abs(x(points[i].date) - px) < Math.abs(x(points[nearest].date) - px)) nearest = i;
     setHover(nearest);
   }
 
@@ -90,11 +95,13 @@ export function BalanceChart({ year, days }: Props) {
               </g>
             );
           })}
-          <path className="line" d={path} />
+          <path className="line" d={line(days)} />
+          {/* Joined to the last actual day so the two lines meet. */}
+          {forecast.length > 0 && <path className="line forecast" d={line([days[days.length - 1], ...forecast])} />}
           {point && (
             <>
               <line className="crosshair" x1={x(point.date)} x2={x(point.date)} y1={PAD.top} y2={HEIGHT - PAD.bottom} />
-              <circle className="dot" cx={x(point.date)} cy={y(point.balance)} r={4} />
+              <circle className={`dot ${forecasting ? 'forecast' : ''}`} cx={x(point.date)} cy={y(point.balance)} r={4} />
             </>
           )}
           <rect
@@ -118,7 +125,10 @@ export function BalanceChart({ year, days }: Props) {
             }
           >
             <strong>{formatPounds(point.balance)}</strong>
-            <span>{formatDate(point.date)}</span>
+            <span>
+              {formatDate(point.date)}
+              {forecasting && ', forecast'}
+            </span>
           </div>
         )}
       </div>
