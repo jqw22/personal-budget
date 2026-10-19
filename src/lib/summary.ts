@@ -148,12 +148,14 @@ export function lastDayOf(month: string): string {
   return `${month}-${String(daysInMonth(month)).padStart(2, '0')}`;
 }
 
-/** How many months the forecast covers after the month with the latest transactions. */
+/** How many whole months the forecast covers after the month with the latest transactions. */
 export const FORECAST_MONTHS = 4;
 
 export interface Forecast {
-  /** The month with the latest transactions, then the months after it. */
+  /** The month with the latest transactions, when it's only partly imported, then the months after it. */
   months: string[];
+  /** The part month whose column is only what's left of it, after the latest transaction. */
+  restOf: string | null;
   /** Income per month, in pence. */
   income: number[];
   /** Spending per category, one amount per month, in pence. */
@@ -169,39 +171,35 @@ function isComplete(transactions: Transaction[], month: string): boolean {
 }
 
 /**
- * The forecast for the month with the latest transactions and the
- * `FORECAST_MONTHS` after it. Each row starts at its monthly average this
- * year, rounded to whole pounds so totals add up to the figures shown, unless
- * the user typed in their own figure. A part month's averages leave that
- * month out, and its own forecast is what's gone so far or the average,
- * whichever is more; once the month is complete it's the actual amount.
- * Spending `categories` with nothing spent yet get a row too, so a figure can
- * be typed in for them.
+ * The forecast from the latest transactions on: the rest of the month they
+ * are in, unless it's complete, then the `FORECAST_MONTHS` after it. Each row
+ * starts at its monthly average this year, rounded to whole pounds so totals
+ * add up to the figures shown, unless the user typed in their own figure. For
+ * the rest of a part month that's the average less what has gone so far, never
+ * below zero, and the averages leave the part month out. Spending
+ * `categories` with nothing spent yet get a row too, so a figure can be typed
+ * in for them. Closing balances build on the actual balance after the latest
+ * transaction.
  */
 export function forecastFrom(
   transactions: Transaction[],
   figures: Record<string, Record<string, number>> = {},
   opening: number | null,
   categories: string[] = [],
-  count = FORECAST_MONTHS + 1,
+  count = FORECAST_MONTHS,
 ): Forecast {
   const first = monthsWithData(transactions)[0];
   const latest = monthsWithData(transactions).at(-1);
-  if (!latest) return { months: [], income: [], rows: [], totals: [], closing: [] };
-  const complete = isComplete(transactions, latest);
-  const averageOver = complete || first === latest ? latest : previousMonth(latest);
-  const history = categoryHistory(transactions, averageOver, 1);
+  if (!latest) return { months: [], restOf: null, income: [], rows: [], totals: [], closing: [] };
+  const restOf = isComplete(transactions, latest) ? null : latest;
+  const history = categoryHistory(transactions, restOf && first !== latest ? previousMonth(latest) : latest, 1);
   const actual = categoryHistory(transactions, latest, 1);
-  const months: string[] = [];
-  for (let m = latest; months.length < count; m = nextMonth(m)) months.push(m);
+  const months: string[] = restOf ? [restOf] : [];
+  for (let m = nextMonth(latest); months.length < count + (restOf ? 1 : 0); m = nextMonth(m)) months.push(m);
 
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
-  const amount = (m: string, row: string, ytd: number, latestAmount: number) => {
-    const typed = figures[m]?.[row];
-    if (typed !== undefined) return typed;
-    if (m !== latest) return average(ytd);
-    return complete ? latestAmount : Math.max(latestAmount, average(ytd));
-  };
+  const amount = (m: string, row: string, ytd: number, soFar: number) =>
+    figures[m]?.[row] ?? (m === restOf ? Math.max(0, average(ytd) - soFar) : average(ytd));
   const income = months.map((m) => amount(m, 'Income', history.ytd.income, actual.income[0]));
   const spent = new Set(history.rows.map((r) => r.category));
   const rowCategories = [
@@ -211,16 +209,16 @@ export function forecastFrom(
   ];
   const rows = rowCategories.map((category) => {
     const ytd = history.rows.find((r) => r.category === category)?.ytd ?? 0;
-    const latestAmount = actual.rows.find((r) => r.category === category)?.amounts[0] ?? 0;
-    return { category, amounts: months.map((m) => amount(m, category, ytd, latestAmount)) };
+    const soFar = actual.rows.find((r) => r.category === category)?.amounts[0] ?? 0;
+    return { category, amounts: months.map((m) => amount(m, category, ytd, soFar)) };
   });
   const totals = months.map((_, i) => rows.reduce((total, r) => total + r.amounts[i], 0));
   const closing: number[] = [];
   if (opening !== null) {
-    const start = closingBalances(transactions, opening, [previousMonth(latest)])[0];
-    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? start) + income[i] - totals[i]);
+    const now = transactions.reduce((balance, t) => balance + t.amount, opening);
+    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? now) + income[i] - totals[i]);
   }
-  return { months, income, rows, totals, closing };
+  return { months, restOf, income, rows, totals, closing };
 }
 
 function daysInMonth(month: string): number {
@@ -265,9 +263,9 @@ export function incomePaydays(transactions: Transaction[], endMonth: string): Pa
  * The forecast balance at the end of each day from the day after `from`, the
  * last day with transactions, to `to`, starting at `balance`. Each month's
  * forecast spending is spread evenly over its days, and its income arrives in
- * one go on the day each source usually pays. For `from`'s own month, what's
- * left of its forecast after what has already gone out and come in is spread
- * over the days remaining, with income still due on its payday.
+ * one go on the day each source usually pays. The rest of `from`'s own month
+ * spreads its forecast over the days left, with income on the paydays still
+ * to come.
  */
 export function dailyForecast(
   transactions: Transaction[],
@@ -277,19 +275,15 @@ export function dailyForecast(
   categories: string[] = [],
 ): { date: string; balance: number }[] {
   const fromMonth = from.date.slice(0, 7);
-  let count = 1;
-  for (let m = fromMonth; m < to.slice(0, 7); m = nextMonth(m)) count++;
+  let count = 0;
+  for (let m = nextMonth(fromMonth); m <= to.slice(0, 7); m = nextMonth(m)) count++;
   const forecast = forecastFrom(transactions, figures, null, categories, count);
   const spending = new Map(forecast.months.map((m, i) => [m, forecast.totals[i]]));
   const income = new Map(forecast.months.map((m, i) => [m, forecast.income[i]]));
   const paydays = incomePaydays(transactions, fromMonth);
 
-  // What's left of this month once what has already gone out and come in is taken off.
-  const actual = categoryHistory(transactions, fromMonth, 1);
   const fromDay = Number(from.date.slice(8));
   const daysLeft = daysInMonth(fromMonth) - fromDay;
-  const spendingLeft = Math.max(0, (spending.get(fromMonth) ?? 0) - actual.totals[0]);
-  const incomeLeft = Math.max(0, (income.get(fromMonth) ?? 0) - actual.income[0]);
   const received = new Set(transactions.filter((t) => t.category === 'Income' && t.date.startsWith(fromMonth)).map((t) => t.merchant));
   const due = paydays.filter((p) => !received.has(p.merchant) && Math.min(p.day, daysInMonth(fromMonth)) > fromDay);
   const dueShare = due.reduce((total, p) => total + p.share, 0);
@@ -300,12 +294,12 @@ export function dailyForecast(
     const month = day.slice(0, 7);
     const length = daysInMonth(month);
     const date = Number(day.slice(8));
+    const monthIncome = income.get(month) ?? 0;
     if (month === fromMonth) {
-      balance -= spendingLeft / daysLeft;
-      if (dueShare === 0) balance += incomeLeft / daysLeft;
-      for (const p of due) if (Math.min(p.day, length) === date) balance += (incomeLeft * p.share) / dueShare;
+      balance -= (spending.get(month) ?? 0) / daysLeft;
+      if (dueShare === 0) balance += monthIncome / daysLeft;
+      for (const p of due) if (Math.min(p.day, length) === date) balance += (monthIncome * p.share) / dueShare;
     } else {
-      const monthIncome = income.get(month) ?? 0;
       balance -= (spending.get(month) ?? 0) / length;
       if (paydays.length === 0) balance += monthIncome / length;
       for (const p of paydays) if (Math.min(p.day, length) === date) balance += monthIncome * p.share;

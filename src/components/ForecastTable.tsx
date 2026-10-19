@@ -78,7 +78,7 @@ export function ForecastTable({ data, opening, onChange }: Props) {
     onChange({ ...data, forecast: next });
   }
 
-  const { months, income, rows, totals, closing } = forecastFrom(data.transactions, forecast, opening, data.categories);
+  const { months, restOf, income, rows, totals, closing } = forecastFrom(data.transactions, forecast, opening, data.categories);
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
   const edited = months.some((m) => Object.keys(forecast[m] ?? {}).length > 0);
 
@@ -102,8 +102,8 @@ export function ForecastTable({ data, opening, onChange }: Props) {
     <>
       <h2>Forecast income and spend</h2>
       <p className="muted small">
-        Starts from each row's monthly average, or for {shortMonth(months[0])} what has gone so far if that's more. Type
-        over any figure to change it, or clear a box to go back.{edited && ' Figures you have typed in are shown in green.'}
+        Starts from each row's monthly average{restOf && `, less what has gone so far for the rest of ${shortMonth(restOf)}`}.
+        Type over any figure to change it, or clear a box to go back.{edited && ' Figures you have typed in are shown in green.'}
       </p>
       <div className="table-wrap">
         <table className="summary forecast">
@@ -118,7 +118,7 @@ export function ForecastTable({ data, opening, onChange }: Props) {
               <th>Category</th>
               {months.map((m) => (
                 <th key={m} className="num">
-                  {shortMonth(m)}
+                  {m === restOf ? `Rest of ${shortMonth(m).split(' ')[0]}` : shortMonth(m)}
                 </th>
               ))}
               <th className="num ytd-col">Total</th>
@@ -176,7 +176,7 @@ export function ForecastTable({ data, opening, onChange }: Props) {
             </tr>
             {closing.length > 0 && (
               <tr className="balance-row">
-                <th title="The actual balance before the first forecast month plus each month's forecast under / over spend">
+                <th title="The actual balance after the latest transaction plus each month's forecast under / over spend">
                   Closing balance
                 </th>
                 {closing.map((balance, i) => (

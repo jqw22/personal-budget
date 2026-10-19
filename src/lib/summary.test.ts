@@ -113,27 +113,30 @@ function forecastData(): Transaction[] {
 describe('forecastFrom', () => {
   const amounts = (f: ReturnType<typeof forecastFrom>, category: string) => f.rows.find((r) => r.category === category)!.amounts;
 
-  it('starts with the month being imported, using what has gone so far or the average of the months before it, whichever is more', () => {
+  it("starts with the rest of the month being imported: the average of the months before, less what's gone so far", () => {
     const f = forecastFrom(forecastData(), undefined, 0);
     expect(f.months).toEqual(['2026-06', '2026-07', '2026-08', '2026-09', '2026-10']);
+    expect(f.restOf).toBe('2026-06');
     expect(f.income[0]).toBe(300000);
-    expect(amounts(f, 'Rent & bills')[0]).toBe(100000);
-    expect(amounts(f, 'Living/Food').slice(0, 2)).toEqual([24800, 24800]);
-    // May's closing balance of £1,752, plus June's forecast.
+    expect(amounts(f, 'Rent & bills').slice(0, 2)).toEqual([0, 100000]);
+    expect(amounts(f, 'Living/Food').slice(0, 2)).toEqual([14800, 24800]);
+    // The actual balance now, £652, plus the rest of June's +£2,852.
     expect(f.closing[0]).toBe(350400);
   });
 
-  it('uses the actual figures once the month is complete', () => {
+  it('starts with the next month once the latest is complete', () => {
     const data = [...forecastData(), { ...forecastData()[4], id: 'f', date: '2026-06-30', amount: -50000 }];
-    const f = forecastFrom(data, undefined, null);
-    expect(amounts(f, 'Living/Food').slice(0, 2)).toEqual([60000, 42400]);
-    expect(f.income[0]).toBe(0);
+    const f = forecastFrom(data, undefined, 0);
+    expect(f.restOf).toBeNull();
+    expect(f.months).toEqual(['2026-07', '2026-08', '2026-09', '2026-10']);
+    expect(amounts(f, 'Living/Food')[0]).toBe(42400);
+    expect(f.closing[0]).toBe(15200 + 150000 - 142400);
   });
 
   it('adds a row for each spending category with nothing spent yet, using any figure typed in', () => {
     const f = forecastFrom(forecastData(), { '2026-07': { Holidays: 50000 } }, null, ['Living/Food', 'Holidays', 'Drinks', 'Income', 'Transfers'], 2);
     expect(f.rows.map((r) => r.category).slice(-2)).toEqual(['Drinks', 'Holidays']);
-    expect(amounts(f, 'Holidays')).toEqual([0, 50000]);
+    expect(amounts(f, 'Holidays')).toEqual([0, 50000, 0]);
     expect(f.rows.some((r) => r.category === 'Income' || r.category === 'Transfers')).toBe(false);
   });
 });
@@ -143,7 +146,7 @@ describe('dailyForecast', () => {
 
   it("spreads what's left of this month's spending over the days left, and pays income on its usual day", () => {
     const days = dailyForecast(forecastData(), undefined, from, '2026-07-31');
-    // £1,248 forecast less £1,100 spent leaves £148 over 20 days.
+    // The rest of June's £148 forecast spending over the 20 days left.
     expect(days[0]).toEqual({ date: '2026-06-11', balance: -740 });
     expect(days.find((d) => d.date === '2026-06-24')!.balance).toBe(-10360);
     expect(days.find((d) => d.date === '2026-06-25')!.balance).toBe(288900);
@@ -151,9 +154,10 @@ describe('dailyForecast', () => {
     expect(days.at(-1)).toEqual({ date: '2026-07-31', balance: 460400 });
   });
 
-  it("uses the user's own forecast figures for this month", () => {
+  it("uses the user's own figures for the rest of this month", () => {
     const days = dailyForecast(forecastData(), { '2026-06': { Income: 0, 'Living/Food': 50000 } }, from, '2026-06-30');
-    expect(days.at(-1)!.balance).toBe(-40000);
+    expect(days[0].balance).toBe(-2500);
+    expect(days.at(-1)!.balance).toBe(-50000);
   });
 
   it('skips income already received this month', () => {
