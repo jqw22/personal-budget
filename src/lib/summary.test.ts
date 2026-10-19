@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, closingBalances, dailyBalances, groupSpending, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, dailyBalances, dailyForecast, groupSpending, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -93,5 +93,26 @@ describe('dailyBalances', () => {
       { date: '2026-01-01', balance: 500 },
       { date: '2026-01-02', balance: 400 },
     ]);
+  });
+});
+
+describe('dailyForecast', () => {
+  const tx = (id: string, date: string, amount: number, category: string): Transaction => ({
+    id, date, description: id, merchant: id, amount, balance: null, category, categorySource: 'manual',
+  });
+  // June has income of £3,000 and spending of £2,070, so the average month is £930 under.
+  const transactions = [tx('a', '2026-06-01', 300000, 'Income'), tx('b', '2026-06-02', -207000, 'Rent & bills')];
+  const history = categoryHistory(transactions, '2026-06', 1);
+
+  it('spreads each month evenly over its days, starting the day after the last transaction', () => {
+    const days = dailyForecast(history, undefined, { date: '2026-06-28', balance: 100000 }, '2026-07-31');
+    expect(days[0]).toEqual({ date: '2026-06-29', balance: 103100 });
+    expect(days.find((d) => d.date === '2026-06-30')!.balance).toBe(106200);
+    expect(days.at(-1)).toEqual({ date: '2026-07-31', balance: 199200 });
+  });
+
+  it("uses the user's own forecast figures for a month", () => {
+    const days = dailyForecast(history, { '2026-07': { Income: 0 } }, { date: '2026-06-30', balance: 0 }, '2026-07-31');
+    expect(days.at(-1)!.balance).toBe(-207000);
   });
 });

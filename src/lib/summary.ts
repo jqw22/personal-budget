@@ -166,9 +166,10 @@ export function forecastAfter(
   history: CategoryHistory,
   figures: Record<string, Record<string, number>> = {},
   startBalance: number | null,
+  count = FORECAST_MONTHS,
 ): Forecast {
   const months: string[] = [];
-  for (let m = nextMonth(history.months.at(-1)!); months.length < FORECAST_MONTHS; m = nextMonth(m)) months.push(m);
+  for (let m = nextMonth(history.months.at(-1)!); months.length < count; m = nextMonth(m)) months.push(m);
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
   const figure = (m: string, row: string, fallback: number) => figures[m]?.[row] ?? fallback;
   const income = months.map((m) => figure(m, 'Income', average(history.ytd.income)));
@@ -182,4 +183,40 @@ export function forecastAfter(
     for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? startBalance) + income[i] - totals[i]);
   }
   return { months, income, rows, totals, closing };
+}
+
+function daysInMonth(month: string): number {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/**
+ * The forecast balance at the end of each day from the day after `from` to
+ * `to`, starting at `balance`. Each month's forecast under / over spend is
+ * spread evenly over its days. The rest of `from`'s own month, which is only
+ * partly imported, goes at the monthly average rate.
+ */
+export function dailyForecast(
+  history: CategoryHistory,
+  figures: Record<string, Record<string, number>> | undefined,
+  from: { date: string; balance: number },
+  to: string,
+): { date: string; balance: number }[] {
+  const toMonth = to.slice(0, 7);
+  let count = 0;
+  for (let m = history.months.at(-1)!; m < toMonth; m = nextMonth(m)) count++;
+  const forecast = forecastAfter(history, figures, null, count);
+  const net = new Map(forecast.months.map((m, i) => [m, forecast.income[i] - forecast.totals[i]]));
+  // Rounded to whole pounds like the forecast table's averages.
+  const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
+  const averageNet = average(history.ytd.income) - history.rows.reduce((total, r) => total + average(r.ytd), 0);
+
+  const days: { date: string; balance: number }[] = [];
+  let balance = from.balance;
+  for (let day = nextDay(from.date); day <= to; day = nextDay(day)) {
+    const month = day.slice(0, 7);
+    balance += (net.get(month) ?? averageNet) / daysInMonth(month);
+    days.push({ date: day, balance: Math.round(balance) });
+  }
+  return days;
 }

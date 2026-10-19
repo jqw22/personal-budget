@@ -674,3 +674,12 @@ form.reply textarea {
   padding-top: 4px;
   padding-bottom: 4px;
 }
+
+.balance-chart .line.forecast {
+  stroke-dasharray: 5 4;
+  opacity: 0.75;
+}
+
+.balance-chart .dot.forecast {
+  opacity: 0.75;
+}
