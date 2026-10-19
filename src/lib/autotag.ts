@@ -86,7 +86,7 @@ export async function suggestTags(data: BudgetData): Promise<TagSuggestion[]> {
     const parsed = JSON.parse(reply) as { suggestions: { merchant: string; category: string }[] };
     picked = new Map(parsed.suggestions.map((s) => [s.merchant, s.category]));
   } catch {
-    throw new ClaudeError("Claude's reply couldn't be read. Try again.");
+    throw new ClaudeError("Dad's reply couldn't be read. Try again.");
   }
   return merchants.map((m) => {
     const category = picked.get(m.merchant);
