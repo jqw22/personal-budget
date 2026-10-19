@@ -195,32 +195,79 @@ function daysInMonth(month: string): number {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
 
+/** How many months back the usual payday of each income is worked out from. */
+const PAYDAY_MONTHS = 6;
+
+export interface Payday {
+  /** Who pays it, from the transaction's merchant. */
+  merchant: string;
+  /** The day of the month it usually arrives. */
+  day: number;
+  /** Its part of all income, from 0 to 1. */
+  share: number;
+}
+
+/** Each source of Income in the six months to `endMonth`, the day it usually arrives and its part of the total. */
+export function incomePaydays(transactions: Transaction[], endMonth: string): Payday[] {
+  let startMonth = endMonth;
+  for (let i = 1; i < PAYDAY_MONTHS; i++) startMonth = previousMonth(startMonth);
+  const sources = new Map<string, { days: number[]; total: number }>();
+  for (const t of transactions) {
+    const month = t.date.slice(0, 7);
+    if (t.category !== 'Income' || t.amount <= 0 || month < startMonth || month > endMonth) continue;
+    const source = sources.get(t.merchant) ?? { days: [], total: 0 };
+    source.days.push(Number(t.date.slice(8)));
+    source.total += t.amount;
+    sources.set(t.merchant, source);
+  }
+  const all = sum([...sources.values()].map((s) => s.total));
+  return [...sources].map(([merchant, s]) => ({
+    merchant,
+    day: [...s.days].sort((a, b) => a - b)[Math.floor(s.days.length / 2)],
+    share: s.total / all,
+  }));
+}
+
 /**
  * The forecast balance at the end of each day from the day after `from` to
- * `to`, starting at `balance`. Each month's forecast under / over spend is
- * spread evenly over its days. The rest of `from`'s own month, which is only
- * partly imported, goes at the monthly average rate.
+ * `to`, starting at `balance`. Each month's forecast spending is spread evenly
+ * over its days, and its income arrives in one go on the day each source
+ * usually pays. The rest of `from`'s own month, which is only partly imported,
+ * spends at the monthly average and gets any income not yet received.
  */
 export function dailyForecast(
+  transactions: Transaction[],
   history: CategoryHistory,
   figures: Record<string, Record<string, number>> | undefined,
   from: { date: string; balance: number },
   to: string,
 ): { date: string; balance: number }[] {
   const toMonth = to.slice(0, 7);
+  const fromMonth = from.date.slice(0, 7);
   let count = 0;
   for (let m = history.months.at(-1)!; m < toMonth; m = nextMonth(m)) count++;
   const forecast = forecastAfter(history, figures, null, count);
-  const net = new Map(forecast.months.map((m, i) => [m, forecast.income[i] - forecast.totals[i]]));
+  const spending = new Map(forecast.months.map((m, i) => [m, forecast.totals[i]]));
+  const income = new Map(forecast.months.map((m, i) => [m, forecast.income[i]]));
   // Rounded to whole pounds like the forecast table's averages.
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
-  const averageNet = average(history.ytd.income) - history.rows.reduce((total, r) => total + average(r.ytd), 0);
+  const averageSpending = history.rows.reduce((total, r) => total + average(r.ytd), 0);
+  const paydays = incomePaydays(transactions, fromMonth);
+  const received = new Set(transactions.filter((t) => t.category === 'Income' && t.date.startsWith(fromMonth)).map((t) => t.merchant));
 
   const days: { date: string; balance: number }[] = [];
   let balance = from.balance;
   for (let day = nextDay(from.date); day <= to; day = nextDay(day)) {
     const month = day.slice(0, 7);
-    balance += (net.get(month) ?? averageNet) / daysInMonth(month);
+    const length = daysInMonth(month);
+    const monthIncome = income.get(month) ?? average(history.ytd.income);
+    balance -= (spending.get(month) ?? averageSpending) / length;
+    if (paydays.length === 0) balance += monthIncome / length;
+    for (const p of paydays) {
+      if (Math.min(p.day, length) !== Number(day.slice(8))) continue;
+      if (month === fromMonth && received.has(p.merchant)) continue;
+      balance += monthIncome * p.share;
+    }
     days.push({ date: day, balance: Math.round(balance) });
   }
   return days;
