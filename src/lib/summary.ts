@@ -121,26 +121,31 @@ export function nextDay(date: string): string {
 }
 
 /**
- * The balance at the end of each day of `year`, from the first day there's a
- * known balance to the last transaction, in pence. Days before the first
- * transaction are left out, since the balance before then isn't known.
+ * The balance at the end of each day from `start` to `end` (inclusive dates),
+ * up to the last transaction, in pence. Days before the first transaction are
+ * left out, since the balance before then isn't known.
  */
-export function dailyBalances(transactions: Transaction[], opening: number, year: string): { date: string; balance: number }[] {
+export function dailyBalances(transactions: Transaction[], opening: number, start: string, end: string): { date: string; balance: number }[] {
   if (transactions.length === 0) return [];
   const first = transactions[0].date;
   const last = transactions[transactions.length - 1].date;
-  if (first > `${year}-12-31` || last < `${year}-01-01`) return [];
+  if (first > end || last < start) return [];
   let balance = opening;
   let i = 0;
-  // Everything before the year is carried in as the balance on 1 January.
-  for (; i < transactions.length && transactions[i].date < `${year}-01-01`; i++) balance += transactions[i].amount;
+  // Everything before the range is carried in as the balance on its first day.
+  for (; i < transactions.length && transactions[i].date < start; i++) balance += transactions[i].amount;
   const days: { date: string; balance: number }[] = [];
-  const end = last < `${year}-12-31` ? last : `${year}-12-31`;
-  for (let day = first > `${year}-01-01` ? first : `${year}-01-01`; day <= end; day = nextDay(day)) {
+  const stop = last < end ? last : end;
+  for (let day = first > start ? first : start; day <= stop; day = nextDay(day)) {
     for (; i < transactions.length && transactions[i].date === day; i++) balance += transactions[i].amount;
     days.push({ date: day, balance });
   }
   return days;
+}
+
+/** The last day of a month: "2026-02" -> "2026-02-28". */
+export function lastDayOf(month: string): string {
+  return `${month}-${String(daysInMonth(month)).padStart(2, '0')}`;
 }
 
 /** How many months ahead the forecast covers. */
