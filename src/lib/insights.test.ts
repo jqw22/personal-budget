@@ -35,8 +35,9 @@ describe('reviewData', () => {
     expect(review.latestMonth).toEqual({ month: '2026-06', firstDate: '2026-06-01', lastDate: '2026-06-15' });
   });
 
-  it('includes the forecast from the latest balance, and the goals', () => {
-    expect(review.forecast[0]).toMatchObject({ month: '2026-07', income: 2000, totalSpending: 865, closingBalance: 4405 });
+  it('includes the forecast from the part month on, and the goals', () => {
+    expect(review.forecast[0]).toMatchObject({ month: '2026-06', income: 2000, totalSpending: 880, closingBalance: 3270 });
+    expect(review.forecast[1]).toMatchObject({ month: '2026-07', income: 2000, totalSpending: 851, closingBalance: 4419 });
     expect(review.goals).toEqual(['Save £3,000 by June']);
   });
 

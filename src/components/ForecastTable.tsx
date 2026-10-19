@@ -1,14 +1,13 @@
 import { Fragment, useState } from 'react';
 import { formatPounds } from '../lib/format';
 import { parseMoney } from '../lib/importer';
-import { forecastAfter, groupSpending, type CategoryHistory } from '../lib/summary';
+import { forecastFrom, groupSpending } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
 
 interface Props {
   data: BudgetData;
-  history: CategoryHistory;
-  /** The actual balance at the end of the last month in `history`, which forecast closing balances start from. Null when unknown. */
-  startBalance: number | null;
+  /** The balance before the first transaction, which forecast closing balances build on. Null when unknown. */
+  opening: number | null;
   onChange: (data: BudgetData) => void;
 }
 
@@ -51,7 +50,7 @@ function MoneyInput({
       className={`forecast-input ${edited ? 'edited' : ''}`}
       inputMode="decimal"
       aria-label={label}
-      title={edited ? 'Your figure. Clear it to go back to the monthly average.' : 'Monthly average. Type to change it.'}
+      title={edited ? 'Your figure. Clear it to go back to the forecast.' : 'Forecast. Type to change it.'}
       value={shown}
       onFocus={(e) => e.target.select()}
       onChange={(e) => setText(e.target.value)}
@@ -67,7 +66,7 @@ function MoneyInput({
   );
 }
 
-export function ForecastTable({ data, history, startBalance, onChange }: Props) {
+export function ForecastTable({ data, opening, onChange }: Props) {
   const forecast = data.forecast ?? {};
 
   function set(m: string, row: string, pence: number | null) {
@@ -79,7 +78,7 @@ export function ForecastTable({ data, history, startBalance, onChange }: Props) 
     onChange({ ...data, forecast: next });
   }
 
-  const { months, income, rows, totals, closing } = forecastAfter(history, forecast, startBalance, undefined, data.categories);
+  const { months, income, rows, totals, closing } = forecastFrom(data.transactions, forecast, opening, data.categories);
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
   const edited = months.some((m) => Object.keys(forecast[m] ?? {}).length > 0);
 
@@ -103,8 +102,8 @@ export function ForecastTable({ data, history, startBalance, onChange }: Props) 
     <>
       <h2>Forecast income and spend</h2>
       <p className="muted small">
-        Starts from each row's monthly average. Type over any figure to change it, or clear a box to go back to the
-        average.{edited && ' Figures you have typed in are shown in green.'}
+        Starts from each row's monthly average, or for {shortMonth(months[0])} what has gone so far if that's more. Type
+        over any figure to change it, or clear a box to go back.{edited && ' Figures you have typed in are shown in green.'}
       </p>
       <div className="table-wrap">
         <table className="summary forecast">
@@ -177,7 +176,7 @@ export function ForecastTable({ data, history, startBalance, onChange }: Props) 
             </tr>
             {closing.length > 0 && (
               <tr className="balance-row">
-                <th title="Last month's actual closing balance plus each month's forecast under / over spend">
+                <th title="The actual balance before the first forecast month plus each month's forecast under / over spend">
                   Closing balance
                 </th>
                 {closing.map((balance, i) => (

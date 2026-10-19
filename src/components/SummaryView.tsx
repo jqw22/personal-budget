@@ -76,7 +76,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const chartEnd = lastDayOf(chartMonths[chartMonths.length - 1]);
   const days = opening === null ? [] : dailyBalances(data.transactions, opening, `${chartMonths[0]}-01`, chartEnd);
   const lastActual = days.at(-1);
-  const forecast = lastActual ? dailyForecast(data.transactions, categoryHistory(data.transactions, latest, 1), data.forecast, lastActual, chartEnd, data.categories) : [];
+  const forecast = lastActual ? dailyForecast(data.transactions, data.forecast, lastActual, chartEnd, data.categories) : [];
   const yearCells = (amount: number, header = false) => {
     const Cell = header ? 'th' : 'td';
     return (
@@ -255,7 +255,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         </div>
       )}
 
-      {history && history.rows.length > 0 && <ForecastTable data={data} history={history} startBalance={closing?.at(-1) ?? null} onChange={onChange} />}
+      {history && history.rows.length > 0 && <ForecastTable data={data} opening={opening} onChange={onChange} />}
 
       {opening !== null && <BalanceChart months={chartMonths} days={days} forecast={forecast} />}
     </section>
