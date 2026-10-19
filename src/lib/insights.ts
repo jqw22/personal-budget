@@ -1,17 +1,20 @@
+import { ClaudeError, FALLBACK_BETA, MODEL, poundsAndPence, replyText, withClaude } from './claude';
 import { impliedOpeningBalance } from './export';
 import { categoryHistory, closingBalances, forecastAfter, monthsWithData, UNTAGGED } from './summary';
 import type { BudgetData } from './types';
 
 /** How many months of actual figures Claude is shown, ending at the latest. */
 const MONTHS_REVIEWED = 6;
-const MODEL = 'claude-opus-5-5';
+/** How many of those months Claude also sees each transaction for. */
+const MONTHS_OF_TRANSACTIONS = 3;
 
 const pounds = (pence: number) => Math.round(pence / 100);
 
 /**
  * What Claude is sent: monthly totals per category, balances, the forecast and
- * the goals, in whole pounds. No transaction descriptions, payees or dates of
- * single transactions leave the device.
+ * the goals, in whole pounds, and the last few months' transactions as date,
+ * short merchant name, category and amount. Full bank descriptions, which
+ * carry references and account details, stay on the device.
  */
 export function reviewData(data: BudgetData, today: string) {
   const months = monthsWithData(data.transactions);
@@ -59,12 +62,17 @@ export function reviewData(data: BudgetData, today: string) {
       setByUser: Object.keys(data.forecast?.[month] ?? {}),
     })),
     goals: (data.goals ?? []).map((g) => g.text),
+    ...(data.insight?.followUps?.length ? { notesFromLastReview: data.insight.followUps.map((f) => f.question) } : {}),
+    transactionsColumns: 'date|merchant|category|amount in pounds (negative is money out)',
+    transactions: data.transactions
+      .filter((t) => t.date.slice(0, 7) >= history.months[history.months.length - MONTHS_OF_TRANSACTIONS])
+      .map((t) => [t.date, t.merchant, t.category ?? UNTAGGED, poundsAndPence(t.amount)].join('|')),
   };
 }
 
 const SYSTEM = `You review a UK household's monthly budget and help them reach their financial goals.
 
-You are given monthly totals by category (amounts in whole pounds), closing bank balances, a forecast for the coming months and the user's goals. Categories are essential, discretionary or untagged. Transfers between their own accounts are left out, and so is untagged money coming in (untaggedMoneyIn), though both move the balance. The forecast uses each category's monthly average this year unless the user typed in their own figure (listed in setByUser). The latest month may be incomplete: compare its dates with today and don't treat a part month as a drop in spending.
+You are given monthly totals by category (amounts in whole pounds), closing bank balances, a forecast for the coming months, the user's goals and every transaction from the last three months. Use the transactions to explain the totals: name the merchants, subscriptions and recurring payments behind a change, and tell one-offs from habits. Categories are essential, discretionary or untagged. Transfers between their own accounts are left out, and so is untagged money coming in (untaggedMoneyIn), though both move the balance. The forecast uses each category's monthly average this year unless the user typed in their own figure (listed in setByUser). The latest month may be incomplete: compare its dates with today and don't treat a part month as a drop in spending.
 
 Write in plain British English, speaking to the user as "you". Use these four Markdown sections, each with a "## " heading:
 
@@ -72,63 +80,58 @@ Write in plain British English, speaking to the user as "you". Use these four Ma
 The latest complete month against the months before: the two or three movements that matter, with amounts.
 
 ## Creeping up
-Discretionary categories trending upwards over several months, with the monthly amounts. Say so plainly if nothing is.
+Discretionary categories trending upwards over several months, with the monthly amounts and the merchants driving them. Say so plainly if nothing is.
 
 ## Your goals
 For each goal, whether the forecast gets there and by when, with the arithmetic in brief. If there are no goals, say what the forecast balance trend means and suggest setting one.
 
 ## What to change
-Two or three specific changes, each with its impact in pounds a month and by the goal's date. Prefer discretionary spending; be realistic about essentials.
+Two or three specific changes, naming merchants or subscriptions where that helps, each with its impact in pounds a month and by the goal's date. Prefer discretionary spending; be realistic about essentials.
 
-Keep it under 350 words. Use short paragraphs and bullet points, no tables. Don't add disclaimers or recommend specific financial products.`;
+Keep it under 400 words. Use short paragraphs and bullet points, no tables. Don't add disclaimers or recommend specific financial products.
 
-export class InsightError extends Error {}
+If notesFromLastReview is given, those are things the user told you about your previous review, such as a payment being a one-off: take them into account.
+
+After the review, the user may reply to clear up a point or ask a question. Answer briefly in plain Markdown without the four sections. If they correct something, say what it changes about your conclusions and the numbers.`;
+
+type MessageParam = { role: 'user' | 'assistant'; content: string };
 
 /**
- * Asks Claude for a review, calling the API straight from the browser with the
- * user's own key. `onText` receives the review as it's written.
+ * Asks Claude for a review. `onText` receives the review as it's written.
  */
 export async function getInsights(data: BudgetData, today: string, onText: (text: string) => void): Promise<string> {
+  return converse(data, today, [], onText);
+}
+
+/** Asks Claude about its last review, with the conversation so far. `onText` receives the answer as it's written. */
+export async function askFollowUp(data: BudgetData, today: string, question: string, onText: (text: string) => void): Promise<string> {
+  const insight = data.insight;
+  if (!insight) throw new ClaudeError('Get insights first.');
+  const turns: MessageParam[] = [{ role: 'assistant', content: insight.text }];
+  for (const f of insight.followUps ?? []) turns.push({ role: 'user', content: f.question }, { role: 'assistant', content: f.answer });
+  turns.push({ role: 'user', content: question });
+  // The review was written from the data as it was then, without the notes this conversation produces.
+  return converse({ ...data, insight: { ...insight, followUps: [] } }, today, turns, onText);
+}
+
+async function converse(data: BudgetData, today: string, turns: MessageParam[], onText: (text: string) => void): Promise<string> {
   const review = reviewData(data, today);
-  if (!review) throw new InsightError('Import some transactions first.');
-  if (!data.anthropicKey) throw new InsightError('Add your Anthropic API key in Account first.');
-  // Loaded only when asked for, so the app opens just as fast for everyone else.
-  const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey: data.anthropicKey, dangerouslyAllowBrowser: true });
-  try {
+  if (!review) throw new ClaudeError('Import some transactions first.');
+  return withClaude(data, async (client) => {
     const stream = client.beta.messages.stream({
       model: MODEL,
       max_tokens: 16000,
       thinking: { type: 'adaptive' },
-      betas: ['server-side-fallback-2026-07-01'],
+      betas: [FALLBACK_BETA],
       fallbacks: 'default',
       system: SYSTEM,
-      messages: [{ role: 'user', content: `Here is my budget:\n\n${JSON.stringify(review, null, 1)}` }],
+      messages: [{ role: 'user', content: `Here is my budget:\n\n${JSON.stringify(review, null, 1)}` }, ...turns],
     });
     let text = '';
     stream.on('text', (delta) => {
       text += delta;
       onText(text);
     });
-    const message = await stream.finalMessage();
-    if (message.stop_reason === 'refusal') throw new InsightError("Claude couldn't write a review this time. Try again.");
-    const final = message.content
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
-    if (!final.trim()) throw new InsightError('Claude sent back an empty review. Try again.');
-    return final;
-  } catch (e) {
-    if (e instanceof InsightError) throw e;
-    if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {
-      throw new InsightError("Your Anthropic API key wasn't accepted. Check it in Account.");
-    }
-    if (e instanceof Anthropic.RateLimitError) throw new InsightError('Too many requests just now. Wait a minute and try again.');
-    if (e instanceof Anthropic.APIConnectionError) throw new InsightError("Couldn't reach Claude. Check your connection and try again.");
-    if (e instanceof Anthropic.APIError) {
-      const credit = /credit balance/i.test(e.message);
-      throw new InsightError(credit ? 'Your Anthropic account is out of credit. Top it up at console.anthropic.com.' : `Claude returned an error: ${e.message}`);
-    }
-    throw e;
-  }
+    return replyText(await stream.finalMessage());
+  });
 }
