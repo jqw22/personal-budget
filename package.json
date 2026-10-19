@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "nostr-tools": "^2.25.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

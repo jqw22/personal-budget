@@ -1,21 +1,17 @@
 import { Fragment, useState } from 'react';
 import { formatPounds } from '../lib/format';
 import { parseMoney } from '../lib/importer';
-import { groupSpending, nextMonth, type CategoryHistory } from '../lib/summary';
+import { forecastAfter, groupSpending, type CategoryHistory } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
 
 interface Props {
   data: BudgetData;
   history: CategoryHistory;
-  /** The month the summary shows; the forecast covers the months after it. */
-  month: string;
-  /** The actual balance at the end of `month`, which forecast closing balances start from. Null when unknown. */
+  /** The actual balance at the end of the last month in `history`, which forecast closing balances start from. Null when unknown. */
   startBalance: number | null;
   onChange: (data: BudgetData) => void;
 }
 
-/** How many months ahead the forecast covers. */
-const MONTHS_AHEAD = 4;
 /** Forecast key for the income row; every other row is a spending category. */
 const INCOME = 'Income';
 
@@ -71,13 +67,8 @@ function MoneyInput({
   );
 }
 
-export function ForecastTable({ data, history, month, startBalance, onChange }: Props) {
-  const months: string[] = [];
-  for (let m = nextMonth(month); months.length < MONTHS_AHEAD; m = nextMonth(m)) months.push(m);
-  // Whole pounds, so the totals add up to the figures shown.
-  const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
+export function ForecastTable({ data, history, startBalance, onChange }: Props) {
   const forecast = data.forecast ?? {};
-  const figure = (m: string, row: string, fallback: number) => forecast[m]?.[row] ?? fallback;
 
   function set(m: string, row: string, pence: number | null) {
     const rows = { ...forecast[m] };
@@ -88,17 +79,8 @@ export function ForecastTable({ data, history, month, startBalance, onChange }: 
     onChange({ ...data, forecast: next });
   }
 
-  const income = months.map((m) => figure(m, INCOME, average(history.ytd.income)));
-  const rows = history.rows.map((r) => ({
-    category: r.category,
-    amounts: months.map((m) => figure(m, r.category, average(r.ytd))),
-  }));
-  const totals = months.map((_, i) => rows.reduce((total, r) => total + r.amounts[i], 0));
+  const { months, income, rows, totals, closing } = forecastAfter(history, forecast, startBalance);
   const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
-  const closing: number[] = [];
-  if (startBalance !== null) {
-    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? startBalance) + income[i] - totals[i]);
-  }
   const edited = months.some((m) => Object.keys(forecast[m] ?? {}).length > 0);
 
   const cells = (row: string, amounts: number[]) => (

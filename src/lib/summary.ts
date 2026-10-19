@@ -142,3 +142,44 @@ export function dailyBalances(transactions: Transaction[], opening: number, year
   }
   return days;
 }
+
+/** How many months ahead the forecast covers. */
+export const FORECAST_MONTHS = 4;
+
+export interface Forecast {
+  months: string[];
+  /** Income per month, in pence. */
+  income: number[];
+  /** Spending per category, one amount per month, in pence. */
+  rows: { category: string; amounts: number[] }[];
+  totals: number[];
+  /** Balance at the end of each month, from `startBalance`. Empty when that isn't known. */
+  closing: number[];
+}
+
+/**
+ * The months after `history`'s last month: each row's monthly average this
+ * year, rounded to whole pounds so totals add up to the figures shown, unless
+ * the user typed in their own figure.
+ */
+export function forecastAfter(
+  history: CategoryHistory,
+  figures: Record<string, Record<string, number>> = {},
+  startBalance: number | null,
+): Forecast {
+  const months: string[] = [];
+  for (let m = nextMonth(history.months.at(-1)!); months.length < FORECAST_MONTHS; m = nextMonth(m)) months.push(m);
+  const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
+  const figure = (m: string, row: string, fallback: number) => figures[m]?.[row] ?? fallback;
+  const income = months.map((m) => figure(m, 'Income', average(history.ytd.income)));
+  const rows = history.rows.map((r) => ({
+    category: r.category,
+    amounts: months.map((m) => figure(m, r.category, average(r.ytd))),
+  }));
+  const totals = months.map((_, i) => rows.reduce((total, r) => total + r.amounts[i], 0));
+  const closing: number[] = [];
+  if (startBalance !== null) {
+    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? startBalance) + income[i] - totals[i]);
+  }
+  return { months, income, rows, totals, closing };
+}

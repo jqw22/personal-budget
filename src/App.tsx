@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccountView, syncLabel } from './components/AccountView';
 import { ImportView } from './components/ImportView';
+import { InsightsView } from './components/InsightsView';
 import { RulesView } from './components/RulesView';
 import { SummaryView } from './components/SummaryView';
 import { TransactionsView, UNTAGGED_FILTER, type TransactionFilter } from './components/TransactionsView';
@@ -8,7 +9,7 @@ import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
 import { useSync } from './lib/useSync';
 
-type Tab = 'summary' | 'import' | 'transactions' | 'rules' | 'account';
+type Tab = 'summary' | 'insights' | 'import' | 'transactions' | 'rules' | 'account';
 
 export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
@@ -39,6 +40,9 @@ export function App() {
         <nav>
           <button className={tab === 'summary' ? 'active' : ''} onClick={() => openTab('summary')}>
             Summary
+          </button>
+          <button className={tab === 'insights' ? 'active' : ''} onClick={() => openTab('insights')}>
+            Insights
           </button>
           <button className={tab === 'transactions' ? 'active' : ''} onClick={() => openTab('transactions')}>
             Transactions{untagged > 0 && <span className="badge">{untagged}</span>}
@@ -79,10 +83,18 @@ export function App() {
             }}
           />
         )}
+        {tab === 'insights' && (
+          <InsightsView
+            data={data}
+            onChange={setData}
+            onInsight={(insight) => setData((current) => ({ ...current, insight }))}
+            onOpenAccount={() => openTab('account')}
+          />
+        )}
         {tab === 'import' && <ImportView data={data} onChange={setData} onDone={() => openTab('transactions')} />}
         {tab === 'transactions' && <TransactionsView data={data} onChange={setData} initialFilter={txFilter} />}
         {tab === 'rules' && <RulesView data={data} onChange={setData} />}
-        {tab === 'account' && <AccountView sync={sync} />}
+        {tab === 'account' && <AccountView sync={sync} data={data} onChange={setData} />}
       </main>
     </div>
   );
