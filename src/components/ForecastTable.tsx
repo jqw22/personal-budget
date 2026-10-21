@@ -103,7 +103,7 @@ export function ForecastTable({ data, opening, onChange }: Props) {
       <h2>Forecast income and spend</h2>
       <p className="muted small">
         Starts from each row's monthly average{restOf && `, less what has gone so far for the rest of ${shortMonth(restOf)}`}.
-        Type over any figure to change it, or clear a box to go back.{edited && ' Figures you have typed in are shown in green.'}
+        Type over any figure to change it, or clear a box to go back.{edited && ' Figures you have typed in are shaded grey.'}
       </p>
       <div className="table-wrap">
         <table className="summary forecast">

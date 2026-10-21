@@ -10,6 +10,7 @@
   --warn-bg: #fff4dc;
   --warn-text: #7a5300;
   --untagged: #fffaf0;
+  --edited: #e6e6e1;
   --danger: #b3261e;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
@@ -29,6 +30,7 @@
     --warn-bg: #3a2f14;
     --warn-text: #f0cf86;
     --untagged: #24221b;
+    --edited: #3a3a35;
     --danger: #f2867e;
   }
 }
@@ -482,6 +484,7 @@ input.forecast-input:focus {
 input.forecast-input.edited {
   font-weight: 600;
   color: var(--accent);
+  background: var(--edited);
 }
 
 table.forecast td {
