@@ -7,6 +7,7 @@ import { SummaryView } from './components/SummaryView';
 import { TransactionsView, UNTAGGED_FILTER, type TransactionFilter } from './components/TransactionsView';
 import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
+import { useCloud } from './lib/useCloud';
 import { useSync } from './lib/useSync';
 
 type Tab = 'summary' | 'insights' | 'import' | 'transactions' | 'rules' | 'account';
@@ -22,6 +23,8 @@ export function App() {
   }
 
   const sync = useSync(data, setData);
+  const cloud = useCloud(data, setData);
+  const cloudOn = cloud.state.status !== 'signed-out';
 
   const [storageUsed, setStorageUsed] = useState<number | null>(0);
   useEffect(() => setStorageUsed(saveData(data)), [data]);
@@ -33,8 +36,12 @@ export function App() {
       <header>
         <div>
           <h1>Personal Budget</h1>
-          <button className={`link sync-status ${sync.state.status}`} onClick={() => openTab('account')}>
-            {sync.state.status === 'signed-out' ? 'Not signed in: data is only on this device' : syncLabel(sync.state)}
+          <button className={`link sync-status ${cloudOn ? cloud.state.status : sync.state.status}`} onClick={() => openTab('account')}>
+            {cloudOn
+              ? syncLabel(cloud.state, 'Supabase')
+              : sync.state.status === 'signed-out'
+                ? 'Not signed in: data is only on this device'
+                : syncLabel(sync.state)}
           </button>
         </div>
         <nav>
@@ -61,7 +68,7 @@ export function App() {
       {storageUsed === null ? (
         <p className="warning">
           This browser is out of space, so your latest changes weren't saved on this device.
-          {sync.signer ? ' They are still saved, encrypted, to your relays.' : ''} Download a CSV from Transactions to keep a
+          {cloudOn ? ' They are still saved to Supabase.' : sync.signer ? ' They are still saved, encrypted, to your relays.' : ''} Download a CSV from Transactions to keep a
           copy.
         </p>
       ) : (
@@ -94,7 +101,7 @@ export function App() {
         {tab === 'import' && <ImportView data={data} onChange={setData} onDone={() => openTab('transactions')} />}
         {tab === 'transactions' && <TransactionsView data={data} onChange={setData} initialFilter={txFilter} />}
         {tab === 'rules' && <RulesView data={data} onChange={setData} />}
-        {tab === 'account' && <AccountView sync={sync} data={data} onChange={setData} />}
+        {tab === 'account' && <AccountView sync={sync} cloud={cloud} data={data} onChange={setData} />}
       </main>
     </div>
   );
