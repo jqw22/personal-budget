@@ -60,7 +60,7 @@ export function AccountView({ sync, data, onChange }: Props) {
     <>
       <h3>Relays</h3>
       <p className="muted small">The Nostr relays your encrypted data is saved to, one per line.</p>
-      <textarea className="relays" rows={4} value={relays} onChange={(e) => setRelays(e.target.value)} aria-label="Relays" />
+      <textarea className="relays" rows={5} value={relays} onChange={(e) => setRelays(e.target.value)} aria-label="Relays" />
       <div>
         <button
           disabled={relayList.length === 0 || relayList.join('\n') === account.relays.join('\n')}

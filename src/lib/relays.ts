@@ -3,7 +3,13 @@ import type { Signer } from './nostr';
 import { fromChunks, KIND, latestByTag, toChunks } from './sync';
 import type { BudgetData } from './types';
 
-export const DEFAULT_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+export const DEFAULT_RELAYS = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.primal.net',
+  'wss://relay.ditto.pub',
+  'wss://relay.nostr.com',
+];
 
 /** Plaintext of a chunk that has been emptied, so a relay's old copy is replaced with nothing. */
 const EMPTY = JSON.stringify({ transactions: [] });
