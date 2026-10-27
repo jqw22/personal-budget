@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { newSecretKey, npub } from '../lib/nostr';
 import type { BudgetData } from '../lib/types';
+import type { useCloud } from '../lib/useCloud';
 import type { useSync } from '../lib/useSync';
+import { SupabaseAccount } from './SupabaseAccount';
 
 interface Props {
   sync: ReturnType<typeof useSync>;
+  cloud: ReturnType<typeof useCloud>;
   data: BudgetData;
   onChange: (data: BudgetData) => void;
 }
@@ -14,22 +17,22 @@ function shortNpub(pubkey: string): string {
   return `${full.slice(0, 12)}…${full.slice(-6)}`;
 }
 
-export function syncLabel(state: Props['sync']['state']): string {
+export function syncLabel(state: Props['sync']['state'], where: 'relays' | 'Supabase' = 'relays'): string {
   switch (state.status) {
     case 'signed-out':
       return 'Not signed in';
     case 'loading':
-      return 'Loading from relays…';
+      return `Loading from ${where}…`;
     case 'saving':
       return 'Saving…';
     case 'saved':
-      return `Saved, encrypted${state.savedAt ? ` at ${state.savedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}`;
+      return `${where === 'relays' ? 'Saved, encrypted' : 'Saved to Supabase'}${state.savedAt ? ` at ${state.savedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}`;
     case 'error':
       return `Not saved: ${state.message}`;
   }
 }
 
-export function AccountView({ sync, data, onChange }: Props) {
+export function AccountView({ sync, cloud, data, onChange }: Props) {
   const { signer, state, account } = sync;
   const [nsec, setNsec] = useState('');
   const [remember, setRemember] = useState(true);
@@ -54,7 +57,19 @@ export function AccountView({ sync, data, onChange }: Props) {
     .map((r) => r.trim())
     .filter((r) => /^wss?:\/\/./.test(r));
 
-  const claudeSettings = <ClaudeKey data={data} onChange={onChange} signedIn={Boolean(signer)} />;
+  const keyKept =
+    cloud.state.status !== 'signed-out'
+      ? ' in Supabase, so it works on your other devices too'
+      : signer
+        ? ', encrypted on your relays, so it works on your other devices too'
+        : ' on this device';
+  const claudeSettings = <ClaudeKey data={data} onChange={onChange} kept={keyKept} />;
+  const supabaseSettings = cloud.configured && (
+    <>
+      <SupabaseAccount cloud={cloud} />
+      <h3>Nostr</h3>
+    </>
+  );
 
   const relaySettings = (
     <>
@@ -76,6 +91,7 @@ export function AccountView({ sync, data, onChange }: Props) {
     return (
       <section>
         <h2>Account</h2>
+        {supabaseSettings}
         <p>
           Signed in as <code title={npub(signer.pubkey)}>{shortNpub(signer.pubkey)}</code>{' '}
           <span className="muted">({signer.method === 'extension' ? 'browser extension' : 'private key'})</span>
@@ -118,6 +134,7 @@ export function AccountView({ sync, data, onChange }: Props) {
   return (
     <section>
       <h2>Account</h2>
+      {supabaseSettings}
       <p>
         Sign in with Nostr to keep an encrypted copy of your budget on Nostr relays, so it's backed up and you can open it
         on other devices. It's encrypted with your key before it leaves this device, so only you can read it.
@@ -184,7 +201,7 @@ export function AccountView({ sync, data, onChange }: Props) {
 }
 
 /** The user's own Anthropic API key, which the Insights tab uses to ask Claude for a review. */
-function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (data: BudgetData) => void; signedIn: boolean }) {
+function ClaudeKey({ data, onChange, kept }: { data: BudgetData; onChange: (data: BudgetData) => void; kept: string }) {
   const [key, setKey] = useState('');
   const { anthropicKey: saved, ...rest } = data;
 
@@ -192,8 +209,7 @@ function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (
     <>
       <h3>Dad's insights</h3>
       <p className="muted small">
-        Your API key is kept with your budget
-        {signedIn ? ', encrypted on your relays, so it works on your other devices too' : ' on this device'}.
+        Your API key is kept with your budget{kept}.
       </p>
       {saved ? (
         <div className="actions saved-key">
