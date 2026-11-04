@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, closingBalances, dailyBalances, dailyForecast, forecastFrom, groupSpending, incomePaydays, lastWorkingDayOf, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, dailyBalances, dailyForecast, forecastFrom, groupSpending, incomePaydays, lastWorkingDayOf, nextMonth, partMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -202,5 +202,15 @@ describe('lastWorkingDayOf', () => {
     expect(lastWorkingDayOf('2026-05')).toBe('2026-05-29');
     expect(lastWorkingDayOf('2026-09')).toBe('2026-09-30');
     expect(lastWorkingDayOf('2026-10')).toBe('2026-10-30');
+  });
+});
+
+describe('partMonth', () => {
+  it('is the latest month until a transaction lands on or after its last working day', () => {
+    expect(partMonth([])).toBeNull();
+    expect(partMonth([tx('2026-08-31', -100, null), tx('2026-09-29', -100, null)])).toBe('2026-09');
+    expect(partMonth([tx('2026-09-30', -100, null)])).toBeNull();
+    expect(partMonth([tx('2026-10-30', -100, null)])).toBeNull();
+    expect(partMonth([tx('2026-10-29', -100, null)])).toBe('2026-10');
   });
 });

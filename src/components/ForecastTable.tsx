@@ -102,7 +102,10 @@ export function ForecastTable({ data, opening, onChange }: Props) {
     <>
       <h2>Forecast income and spend</h2>
       <p className="muted small">
-        Starts from each row's monthly average{restOf && `, less what has gone so far for the rest of ${shortMonth(restOf)}`}.
+        {restOf ? `Rest of ${shortMonth(restOf).split(' ')[0]} is what is still to come after the latest transaction, then the` : 'The'} next{' '}
+        {months.length - (restOf ? 1 : 0)} whole months. Each figure starts from the row's monthly average
+        {restOf && `, less what has gone so far for the rest of ${shortMonth(restOf).split(' ')[0]}`}, and closing balances build on your
+        actual balance now.
         Type over any figure to change it, or clear a box to go back.{edited && ' Figures you have typed in are shaded grey.'}
       </p>
       <div className="table-wrap">

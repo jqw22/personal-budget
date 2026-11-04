@@ -78,6 +78,10 @@ export function BalanceChart({ months, days, forecast = [] }: Props) {
   return (
     <>
       <h2>Daily closing balance</h2>
+      <p className="muted small">
+        Solid line: your actual balance at the end of each day, to {formatDate(days[days.length - 1].date)}.
+        {forecast.length > 0 && ' Dashed line: the forecast, with spending spread evenly over each day and income on its usual payday.'}
+      </p>
       <div className="balance-chart" ref={wrap}>
         <svg width={width} height={HEIGHT} role="img" aria-label={`Closing balance each day from ${formatMonth(months[0])} to ${formatMonth(months[months.length - 1])}`}>
           {yTicks.map((v) => (
