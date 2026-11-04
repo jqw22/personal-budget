@@ -11,6 +11,7 @@
   --warn-text: #7a5300;
   --untagged: #fffaf0;
   --edited: #e6e6e1;
+  --avg: #eeeeea;
   --danger: #b3261e;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
@@ -31,6 +32,7 @@
     --warn-text: #f0cf86;
     --untagged: #24221b;
     --edited: #3a3a35;
+    --avg: #2a2a27;
     --danger: #f2867e;
   }
 }
@@ -724,6 +726,7 @@ table.summary.combined col.category-col {
 
 table.summary.combined .avg-col {
   border-left: 2px solid var(--border);
+  background: var(--avg);
 }
 
 table.summary.combined .fc-start {

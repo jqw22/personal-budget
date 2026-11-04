@@ -119,7 +119,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
               </th>
             ))}
             <th className="num avg-col" title={`${month.slice(0, 4)} so far divided by ${avgOver} month${avgOver === 1 ? '' : 's'} with data`}>
-              Avg
+              Average
             </th>
             {fc.months.map((m, i) => (
               <th key={m} className={`num ${i === 0 ? 'fc-start' : ''}`} data-month={m}>
