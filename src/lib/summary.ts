@@ -165,9 +165,16 @@ export interface Forecast {
   closing: number[];
 }
 
-/** True when transactions run to the last day of `month`, so it isn't still being filled in. */
+/** The last Monday to Friday of a month: "2026-05" -> "2026-05-29". Bank holidays aren't counted. */
+export function lastWorkingDayOf(month: string): string {
+  const d = new Date(`${lastDayOf(month)}T12:00:00Z`);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** True once a transaction is dated on or after the last working day of `month`, so it isn't still being filled in. */
 function isComplete(transactions: Transaction[], month: string): boolean {
-  return (transactions.at(-1)?.date ?? '') >= lastDayOf(month);
+  return (transactions.at(-1)?.date ?? '') >= lastWorkingDayOf(month);
 }
 
 /**
