@@ -56,7 +56,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
   });
   const groups = groupSpending(rows, data.essential ?? []);
   const span = 1 + actualMonths.length + 1 + fc.months.length;
-  const label = (m: string) => (m === fc.restOf ? `Rest of ${colMonth(m)}` : colMonth(m));
+  const label = colMonth;
   const actualCell = (m: string, amount: number, Cell: 'td' | 'th' = 'td', className = '') => (
     <Cell key={m} className={`num ${className}`}>
       {withData.has(m) ? formatPounds(amount) : '–'}

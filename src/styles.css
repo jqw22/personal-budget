@@ -730,11 +730,18 @@ table.summary.combined .fc-start {
   border-left: 2px solid var(--border);
 }
 
+table.summary.combined thead th {
+  text-align: center;
+}
+
+table.summary.combined thead tr > :first-child {
+  text-align: left;
+}
+
 table.summary.combined tr.halves th {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  text-align: left;
 }
 
 table.summary.combined td {
