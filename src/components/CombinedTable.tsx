@@ -1,7 +1,8 @@
-import { Fragment } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import { formatPounds } from '../lib/format';
 import { categoryHistory, closingBalances, forecastFrom, groupSpending, UNTAGGED } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
+import { BalanceChart, type ChartColumn } from './BalanceChart';
 import { MoneyInput, net, shortMonth } from './forecastParts';
 
 interface Props {
@@ -13,6 +14,9 @@ interface Props {
   opening: number | null;
   onShowTransactions: (month: string, category: string | null) => void;
   onChange: (data: BudgetData) => void;
+  /** End-of-day balances, actual then forecast, for the chart under the table. */
+  days: { date: string; balance: number }[];
+  forecast: { date: string; balance: number }[];
 }
 
 const INCOME = 'Income';
@@ -24,7 +28,28 @@ function colMonth(m: string): string {
 }
 
 /** Actual months, their monthly average, then the forecast, in one table with a row per category. */
-export function CombinedTable({ data, month, count, opening, onShowTransactions, onChange }: Props) {
+export function CombinedTable({ data, month, count, opening, onShowTransactions, onChange, days, forecast }: Props) {
+  const table = useRef<HTMLTableElement>(null);
+  const [layout, setLayout] = useState<{ columns: ChartColumn[]; width: number }>({ columns: [], width: 0 });
+  // The chart's months sit exactly under the table's month columns, so measure them.
+  useLayoutEffect(() => {
+    const el = table.current;
+    if (!el) return;
+    const measure = () => {
+      const box = el.getBoundingClientRect();
+      const columns = [...el.querySelectorAll<HTMLElement>('thead th[data-month]')].map((th) => {
+        const r = th.getBoundingClientRect();
+        return { month: th.dataset.month!, left: r.left - box.left, width: r.width };
+      });
+      setLayout((old) =>
+        old.width === box.width && JSON.stringify(old.columns) === JSON.stringify(columns) ? old : { columns, width: box.width },
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
   const saved = data.forecast ?? {};
   const history = month ? categoryHistory(data.transactions, month, count) : null;
   const fc = forecastFrom(data.transactions, saved, opening, data.categories);
@@ -66,7 +91,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
 
   return (
     <div className="table-wrap">
-      <table className="summary combined">
+      <table className="summary combined" ref={table}>
         <colgroup>
           <col className="category-col" />
           {actualMonths.map((m) => (
@@ -89,7 +114,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
           <tr>
             <th>Category</th>
             {actualMonths.map((m) => (
-              <th key={m} className="num">
+              <th key={m} className="num" data-month={m}>
                 {colMonth(m)}
               </th>
             ))}
@@ -97,7 +122,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
               Avg
             </th>
             {fc.months.map((m, i) => (
-              <th key={m} className={`num ${i === 0 ? 'fc-start' : ''}`}>
+              <th key={m} className={`num ${i === 0 ? 'fc-start' : ''}`} data-month={m}>
                 {label(m)}
               </th>
             ))}
@@ -221,6 +246,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
           )}
         </tfoot>
       </table>
+      {opening !== null && <BalanceChart columns={layout.columns} width={layout.width} days={days} forecast={forecast} />}
     </div>
   );
 }

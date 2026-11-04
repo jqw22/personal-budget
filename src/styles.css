@@ -771,3 +771,10 @@ table.summary.combined tr > :first-child {
 table.summary.combined tr.subtotal > :first-child {
   background: var(--bg);
 }
+
+/* The chart's heading stays in view while the table and chart scroll sideways together. */
+.table-wrap > h2,
+.table-wrap > p {
+  position: sticky;
+  left: 0;
+}
