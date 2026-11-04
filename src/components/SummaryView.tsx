@@ -13,7 +13,6 @@ import {
   UNTAGGED,
 } from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
-import { BalanceChart } from './BalanceChart';
 import type { BudgetData } from '../lib/types';
 import { CombinedTable } from './CombinedTable';
 
@@ -26,8 +25,6 @@ interface Props {
 
 /** How many months the category table shows, ending at the chosen month. */
 const MONTHS_SHOWN = 4;
-/** How many months of actual balances the chart shows, ending at the latest. */
-const CHART_MONTHS_BACK = 12;
 
 export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const allMonths = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
@@ -61,11 +58,13 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
   // The latest 12 months with data and the forecast's months after them, whichever month the tables show.
   const latest = allMonths[allMonths.length - 1];
-  const chartMonths = [latest];
-  while (chartMonths.length < CHART_MONTHS_BACK) chartMonths.unshift(previousMonth(chartMonths[0]));
-  while (chartMonths.length < CHART_MONTHS_BACK + FORECAST_MONTHS) chartMonths.push(nextMonth(chartMonths[chartMonths.length - 1]));
-  const chartEnd = lastDayOf(chartMonths[chartMonths.length - 1]);
-  const days = opening === null ? [] : dailyBalances(data.transactions, opening, `${chartMonths[0]}-01`, chartEnd);
+  // The chart runs from the first actual column to the end of the forecast, under the table's columns.
+  let chartStart = month || latest;
+  for (let i = 1; month && i < MONTHS_SHOWN; i++) chartStart = previousMonth(chartStart);
+  let chartLast = latest;
+  for (let i = 0; i < FORECAST_MONTHS; i++) chartLast = nextMonth(chartLast);
+  const chartEnd = lastDayOf(chartLast);
+  const days = opening === null ? [] : dailyBalances(data.transactions, opening, `${chartStart}-01`, chartEnd);
   const lastActual = days.at(-1);
   const forecast = lastActual ? dailyForecast(data.transactions, data.forecast, lastActual, chartEnd, data.categories) : [];
 
@@ -122,9 +121,10 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         opening={opening}
         onShowTransactions={onShowTransactions}
         onChange={onChange}
+        days={days}
+        forecast={forecast}
       />
 
-      {opening !== null && <BalanceChart months={chartMonths} days={days} forecast={forecast} />}
     </section>
   );
 }
