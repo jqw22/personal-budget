@@ -14,16 +14,16 @@ interface Props {
 /** Forecast key for the income row; every other row is a spending category. */
 const INCOME = 'Income';
 
-function shortMonth(month: string): string {
+export function shortMonth(month: string): string {
   return new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
 }
 
-function net(amount: number): string {
+export function net(amount: number): string {
   return `${amount >= 0 ? '+' : '−'}${formatPounds(Math.abs(amount))}`;
 }
 
 /** A money box that saves when you leave it. Clearing it goes back to the average. */
-function MoneyInput({
+export function MoneyInput({
   value,
   edited,
   label,
