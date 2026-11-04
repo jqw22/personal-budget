@@ -172,9 +172,15 @@ export function lastWorkingDayOf(month: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** True once a transaction is dated on or after the last working day of `month`, so it isn't still being filled in. */
-function isComplete(transactions: Transaction[], month: string): boolean {
-  return (transactions.at(-1)?.date ?? '') >= lastWorkingDayOf(month);
+/**
+ * The month with the latest transactions while it's still being filled in,
+ * that is until a transaction is dated on or after its last working day.
+ * Null once it's finished.
+ */
+export function partMonth(transactions: Transaction[]): string | null {
+  const last = transactions.at(-1)?.date;
+  if (!last) return null;
+  return last >= lastWorkingDayOf(last.slice(0, 7)) ? null : last.slice(0, 7);
 }
 
 /**
@@ -198,7 +204,7 @@ export function forecastFrom(
   const first = monthsWithData(transactions)[0];
   const latest = monthsWithData(transactions).at(-1);
   if (!latest) return { months: [], restOf: null, income: [], rows: [], totals: [], closing: [] };
-  const restOf = isComplete(transactions, latest) ? null : latest;
+  const restOf = partMonth(transactions);
   const history = categoryHistory(transactions, restOf && first !== latest ? previousMonth(latest) : latest, 1);
   const actual = categoryHistory(transactions, latest, 1);
   const months: string[] = restOf ? [restOf] : [];

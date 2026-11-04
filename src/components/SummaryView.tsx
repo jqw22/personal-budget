@@ -9,6 +9,7 @@ import {
   groupSpending,
   lastDayOf,
   monthsWithData,
+  partMonth,
   nextMonth,
   previousMonth,
   UNTAGGED,
@@ -40,14 +41,19 @@ function shortMonth(month: string): string {
 }
 
 export function SummaryView({ data, onShowTransactions, onChange }: Props) {
-  const months = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
-  const [month, setMonth] = useState(() => months.at(-1) ?? '');
+  const allMonths = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
+  // A month still being filled in is only in the forecast, as the rest of it.
+  const part = useMemo(() => partMonth(data.transactions), [data.transactions]);
+  const months = useMemo(() => allMonths.filter((m) => m !== part), [allMonths, part]);
+  const [picked, setMonth] = useState(() => months.at(-1) ?? '');
+  // The picked month, or the latest complete one if that has gone (e.g. it is now the part month).
+  const month = months.includes(picked) ? picked : (months.at(-1) ?? '');
   const history = useMemo(() => (month ? categoryHistory(data.transactions, month, MONTHS_SHOWN) : null), [
     data.transactions,
     month,
   ]);
 
-  if (months.length === 0) {
+  if (allMonths.length === 0) {
     return (
       <section>
         <h2>Summary</h2>
@@ -62,14 +68,13 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const monthTransactions = data.transactions.filter((t) => t.date.startsWith(month));
   const firstDay = Number(monthTransactions[0]?.date.slice(8));
   const lastDay = Number(monthTransactions.at(-1)?.date.slice(8));
-  const [y, m] = month.split('-').map(Number);
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const partial = monthTransactions.length > 0 && (firstDay > 1 || lastDay < daysInMonth);
+  // A finished month can end on its last working day, so only a late start makes it partial.
+  const partial = monthTransactions.length > 0 && firstDay > 1;
   const average = (amount: number) => (history?.ytd.months ? Math.round(amount / history.ytd.months) : 0);
   const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
   const closing = history && opening !== null ? closingBalances(data.transactions, opening, history.months) : null;
   // The latest 12 months with data and the forecast's months after them, whichever month the tables show.
-  const latest = months[months.length - 1];
+  const latest = allMonths[allMonths.length - 1];
   const chartMonths = [latest];
   while (chartMonths.length < CHART_MONTHS_BACK) chartMonths.unshift(previousMonth(chartMonths[0]));
   while (chartMonths.length < CHART_MONTHS_BACK + FORECAST_MONTHS) chartMonths.push(nextMonth(chartMonths[chartMonths.length - 1]));
@@ -89,7 +94,8 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
 
   return (
     <section>
-      <div className="month-picker">
+      {months.length > 0 && (
+        <div className="month-picker">
         <button aria-label="Previous month" disabled={index <= 0} onClick={() => setMonth(months[index - 1])}>
           ‹
         </button>
@@ -107,7 +113,8 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         >
           ›
         </button>
-      </div>
+        </div>
+      )}
 
       {partial && (
         <p className="muted small">
@@ -125,7 +132,15 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
       )}
 
       <h2>Actual income and spend</h2>
-      {!history || history.rows.length === 0 ? (
+      <p className="muted small">
+        {history && months.length > 0 && <>{formatMonth(history.months.find((m) => withData.has(m)) ?? month)} to {formatMonth(month)}. </>}
+        Complete months only: a month is complete once a transaction is dated on or after its last working day
+        {part ? `. ${formatMonth(part)} isn't yet, so it is in the forecast below.` : '.'}
+        {history && history.ytd.months > 0 && ` Year so far and average cover ${history.ytd.months} month${history.ytd.months === 1 ? '' : 's'} of ${month.slice(0, 4)}.`}
+      </p>
+      {months.length === 0 ? (
+        <p className="muted">No complete months yet.</p>
+      ) : !history || history.rows.length === 0 ? (
         <p className="muted">No spending in these months.</p>
       ) : (
         <div className="table-wrap">
@@ -255,7 +270,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         </div>
       )}
 
-      {history && history.rows.length > 0 && <ForecastTable data={data} opening={opening} onChange={onChange} />}
+      <ForecastTable data={data} opening={opening} onChange={onChange} />
 
       {opening !== null && <BalanceChart months={chartMonths} days={days} forecast={forecast} />}
     </section>
