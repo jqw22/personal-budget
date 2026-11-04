@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { formatPounds } from '../lib/format';
 import { categoryHistory, closingBalances, forecastFrom, groupSpending, UNTAGGED } from '../lib/summary';
 import type { BudgetData } from '../lib/types';
-import { MoneyInput, net, shortMonth } from './ForecastTable';
+import { MoneyInput, net, shortMonth } from './forecastParts';
 
 interface Props {
   data: BudgetData;
