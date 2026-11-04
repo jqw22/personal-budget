@@ -111,7 +111,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
       <p className="muted small">
         Actual: complete months only, to {month ? formatMonth(month) : 'none yet'}
         {part ? `; ${formatMonth(part)} isn't complete until a transaction is dated on or after its last working day, so it is the first forecast month and covers what is still to come` : ''}.
-        Avg: {month.slice(0, 4) || 'the year'} so far divided by the months with data. Forecast: each figure starts from the monthly average; type
+        Average: {month.slice(0, 4) || 'the year'} so far divided by the months with data. Forecast: each figure starts from the monthly average; type
         over one to change it, or clear it to go back. Closing balances build on your actual balance now.
       </p>
       <CombinedTable
