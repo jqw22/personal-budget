@@ -708,3 +708,66 @@ form.reply textarea {
 .actions.insight-actions button.primary {
   margin-top: 0;
 }
+
+/* One table: actual months, their average, then the forecast. */
+table.summary.combined {
+  min-width: 860px;
+}
+
+table.summary.combined col {
+  width: 8.6%;
+}
+
+table.summary.combined col.category-col {
+  width: 14%;
+}
+
+table.summary.combined .avg-col {
+  border-left: 2px solid var(--border);
+}
+
+table.summary.combined .fc-start {
+  border-left: 2px solid var(--border);
+}
+
+table.summary.combined thead th {
+  text-align: center;
+}
+
+table.summary.combined thead tr > :first-child {
+  text-align: left;
+}
+
+table.summary.combined tr.halves th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+table.summary.combined td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+table.summary.combined input.forecast-input {
+  width: 100%;
+  max-width: 4.5em;
+}
+
+table.summary.combined th,
+table.summary.combined td {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+/* Keep category names in view while the months scroll sideways on a phone. */
+table.summary.combined tr > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
+table.summary.combined tr.subtotal > :first-child {
+  background: var(--bg);
+}
