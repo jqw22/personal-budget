@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryHistory, closingBalances, dailyBalances, dailyForecast, forecastFrom, groupSpending, incomePaydays, nextMonth, previousMonth } from './summary';
+import { categoryHistory, closingBalances, dailyBalances, dailyForecast, forecastFrom, groupSpending, incomePaydays, lastWorkingDayOf, nextMonth, previousMonth } from './summary';
 import type { Transaction } from './types';
 
 let n = 0;
@@ -133,6 +133,13 @@ describe('forecastFrom', () => {
     expect(f.closing[0]).toBe(15200 + 150000 - 142400);
   });
 
+  it('counts a month as finished from its last working day', () => {
+    // 30 May 2026 is a Saturday, so Friday the 29th is the last working day.
+    const upTo = (date: string) => [...forecastData().slice(0, 3).map((t) => ({ ...t, date: t.date === '2026-05-31' ? '2026-05-10' : t.date })), { ...forecastData()[2], id: 'z', date }];
+    expect(forecastFrom(upTo('2026-05-28'), undefined, null).restOf).toBe('2026-05');
+    expect(forecastFrom(upTo('2026-05-29'), undefined, null).restOf).toBeNull();
+  });
+
   it('adds a row for each spending category with nothing spent yet, using any figure typed in', () => {
     const f = forecastFrom(forecastData(), { '2026-07': { Holidays: 50000 } }, null, ['Living/Food', 'Holidays', 'Drinks', 'Income', 'Transfers'], 2);
     expect(f.rows.map((r) => r.category).slice(-2)).toEqual(['Drinks', 'Holidays']);
@@ -187,5 +194,13 @@ describe('incomePaydays', () => {
       { merchant: 'EMPLOYER', day: 25, share: 0.9 },
       { merchant: 'RENT IN', day: 10, share: 0.1 },
     ]);
+  });
+});
+
+describe('lastWorkingDayOf', () => {
+  it('steps back from a weekend to the Friday', () => {
+    expect(lastWorkingDayOf('2026-05')).toBe('2026-05-29');
+    expect(lastWorkingDayOf('2026-09')).toBe('2026-09-30');
+    expect(lastWorkingDayOf('2026-10')).toBe('2026-10-30');
   });
 });
