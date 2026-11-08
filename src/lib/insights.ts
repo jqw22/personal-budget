@@ -23,7 +23,7 @@ export function reviewData(data: BudgetData, today: string) {
   const withData = new Set(months);
   const history = categoryHistory(data.transactions, latest, MONTHS_REVIEWED);
   const essential = data.essential ?? [];
-  const opening = data.openingBalance ?? impliedOpeningBalance(data.transactions);
+  const opening = impliedOpeningBalance(data.transactions);
   const closing = opening === null ? null : closingBalances(data.transactions, opening, history.months);
   const forecast = forecastFrom(data.transactions, data.forecast, opening, data.categories);
   const typeOf = (category: string) =>
