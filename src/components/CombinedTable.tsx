@@ -85,9 +85,22 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
   const groups = groupSpending(rows, data.essential ?? []);
   const span = 1 + actualMonths.length + 1 + fc.months.length;
   const label = colMonth;
-  const actualCell = (m: string, amount: number, Cell: 'td' | 'th' = 'td', className = '') => (
+  /** A figure for a month; given a row to open, clicking it shows the transactions behind it. */
+  const actualCell = (m: string, amount: number, Cell: 'td' | 'th' = 'td', className = '', open?: string) => (
     <Cell key={m} className={`num ${className}`}>
-      {withData.has(m) ? formatPounds(amount) : '–'}
+      {!withData.has(m) ? (
+        '–'
+      ) : open && amount !== 0 ? (
+        <button
+          className="link figure"
+          title={`See ${open === UNTAGGED ? 'untagged' : open} transactions in ${shortMonth(m)}`}
+          onClick={() => onShowTransactions(m, open === UNTAGGED ? null : open)}
+        >
+          {formatPounds(amount)}
+        </button>
+      ) : (
+        formatPounds(amount)
+      )}
     </Cell>
   );
   const totalOf = (list: typeof rows, pick: (r: (typeof rows)[number]) => number) => list.reduce((t, r) => t + pick(r), 0);
@@ -138,7 +151,7 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
                 Income
               </button>
             </td>
-            {actualMonths.map((m, i) => actualCell(m, history!.income[i]))}
+            {actualMonths.map((m, i) => actualCell(m, history!.income[i], 'td', '', 'Income'))}
             <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.income ?? 0))}</td>
             {fc.months.map((m, i) => (
               <td key={`f${m}`} className={`num ${i === 0 ? 'fc-start' : ''}`}>
@@ -170,7 +183,7 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
                       {r.category}
                     </button>
                   </td>
-                  {actualMonths.map((m, i) => actualCell(m, r.actual[i], 'td', 'muted'))}
+                  {actualMonths.map((m, i) => actualCell(m, r.actual[i], 'td', 'muted', r.category))}
                   <td className="num avg-col">{formatPounds(average(r.ytd))}</td>
                   {fc.months.map((m, i) => (
                     <td key={`f${m}`} className={`num ${i === 0 ? 'fc-start' : ''}`}>
