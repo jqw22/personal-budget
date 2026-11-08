@@ -10,6 +10,8 @@ import type { BudgetData } from './lib/types';
 import { useSync } from './lib/useSync';
 
 type Tab = 'summary' | 'insights' | 'import' | 'transactions' | 'rules' | 'account';
+/** The Insights tab is hidden for now; its code stays so it can come back. */
+const SHOW_INSIGHTS = false;
 
 export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
@@ -41,9 +43,11 @@ export function App() {
           <button className={tab === 'summary' ? 'active' : ''} onClick={() => openTab('summary')}>
             Summary
           </button>
-          <button className={tab === 'insights' ? 'active' : ''} onClick={() => openTab('insights')}>
-            Insights
-          </button>
+          {SHOW_INSIGHTS && (
+            <button className={tab === 'insights' ? 'active' : ''} onClick={() => openTab('insights')}>
+              Insights
+            </button>
+          )}
           <button className={tab === 'transactions' ? 'active' : ''} onClick={() => openTab('transactions')}>
             Transactions{untagged > 0 && <span className="badge">{untagged}</span>}
           </button>
@@ -83,7 +87,7 @@ export function App() {
             }}
           />
         )}
-        {tab === 'insights' && (
+        {SHOW_INSIGHTS && tab === 'insights' && (
           <InsightsView
             data={data}
             onChange={setData}

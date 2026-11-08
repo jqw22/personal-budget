@@ -11,6 +11,8 @@ interface Props {
   month: string;
   /** How many actual months to show. */
   count: number;
+  /** The latest complete month: the Average column is January of its year up to it, whichever months are shown. */
+  averageTo: string;
   opening: number | null;
   onShowTransactions: (month: string, category: string | null) => void;
   onChange: (data: BudgetData) => void;
@@ -28,7 +30,7 @@ function colMonth(m: string): string {
 }
 
 /** Actual months, their monthly average, then the forecast, in one table with a row per category. */
-export function CombinedTable({ data, month, count, opening, onShowTransactions, onChange, days, forecast }: Props) {
+export function CombinedTable({ data, month, count, averageTo, opening, onShowTransactions, onChange, days, forecast }: Props) {
   const table = useRef<HTMLTableElement>(null);
   const [layout, setLayout] = useState<{ columns: ChartColumn[]; width: number }>({ columns: [], width: 0 });
   // The chart's months sit exactly under the table's month columns, so measure them.
@@ -55,7 +57,8 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
   const fc = forecastFrom(data.transactions, saved, opening, data.categories);
   const actualMonths = history?.months ?? [];
   const withData = new Set(data.transactions.map((t) => t.date.slice(0, 7)));
-  const avgOver = history?.ytd.months ?? 0;
+  const ytdHistory = averageTo ? categoryHistory(data.transactions, averageTo, 1) : null;
+  const avgOver = ytdHistory?.ytd.months ?? 0;
   const average = (amount: number) => (avgOver ? Math.round(amount / avgOver) : 0);
   const actualClosing = history && opening !== null ? closingBalances(data.transactions, opening, actualMonths) : null;
 
@@ -75,7 +78,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
     return {
       category,
       actual: a?.amounts ?? actualMonths.map(() => 0),
-      ytd: a?.ytd ?? 0,
+      ytd: ytdHistory?.rows.find((r) => r.category === category)?.ytd ?? 0,
       forecast: fc.rows.find((r) => r.category === category)?.amounts ?? null,
     };
   });
@@ -118,7 +121,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
                 {colMonth(m)}
               </th>
             ))}
-            <th className="num avg-col" title={`${month.slice(0, 4)} so far divided by ${avgOver} month${avgOver === 1 ? '' : 's'} with data`}>
+            <th className="num avg-col" title={averageTo ? `January to ${shortMonth(averageTo)}, divided by ${avgOver} month${avgOver === 1 ? '' : 's'} with data` : undefined}>
               Average
             </th>
             {fc.months.map((m, i) => (
@@ -136,7 +139,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
               </button>
             </td>
             {actualMonths.map((m, i) => actualCell(m, history!.income[i]))}
-            <td className="num avg-col">{formatPounds(average(history?.ytd.income ?? 0))}</td>
+            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.income ?? 0))}</td>
             {fc.months.map((m, i) => (
               <td key={`f${m}`} className={`num ${i === 0 ? 'fc-start' : ''}`}>
                 <MoneyInput
@@ -202,7 +205,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
           <tr>
             <th>Total spending</th>
             {actualMonths.map((m, i) => actualCell(m, history!.totals[i], 'th'))}
-            <th className="num avg-col">{formatPounds(average(history?.ytd.total ?? 0))}</th>
+            <th className="num avg-col">{formatPounds(average(ytdHistory?.ytd.total ?? 0))}</th>
             {fc.totals.map((t, i) => (
               <th key={`f${fc.months[i]}`} className={`num ${i === 0 ? 'fc-start' : ''}`}>
                 {formatPounds(t)}
@@ -220,7 +223,7 @@ export function CombinedTable({ data, month, count, opening, onShowTransactions,
               );
             })}
             {(() => {
-              const amount = average(history?.ytd.income ?? 0) - average(history?.ytd.total ?? 0);
+              const amount = average(ytdHistory?.ytd.income ?? 0) - average(ytdHistory?.ytd.total ?? 0);
               return <th className={`num avg-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
             {fc.totals.map((t, i) => {

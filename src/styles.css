@@ -781,3 +781,11 @@ table.summary.combined tr.subtotal > :first-child {
   position: sticky;
   left: 0;
 }
+
+/* The total of whatever the filters show, above the list. */
+table.transactions tr.total-row th {
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}

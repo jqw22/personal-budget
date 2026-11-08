@@ -10,10 +10,10 @@ const t = (id: string, date: string, amount: number, category: string | null, me
 const data = {
   ...emptyData(),
   essential: ['Rent & bills'],
-  openingBalance: 100000,
   goals: [{ id: 'g', text: 'Save £3,000 by June' }],
   transactions: [
-    t('a', '2026-05-01', 200000, 'Income', 'ACME PAYROLL'),
+    // The bank's balance after the first payment implies £1,000 before it.
+    { ...t('a', '2026-05-01', 200000, 'Income', 'ACME PAYROLL'), balance: 300000 },
     t('b', '2026-05-02', -80000, 'Rent & bills', 'LANDLORD J BLOGGS'),
     t('c', '2026-05-10', -5050, 'Going Out'),
     t('d', '2026-06-01', 200000, 'Income', 'ACME PAYROLL'),
