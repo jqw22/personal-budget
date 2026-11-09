@@ -13,6 +13,17 @@ export interface Transaction {
   category: string | null;
   /** How the category was set: by hand, or by a merchant rule. */
   categorySource: 'manual' | 'rule' | null;
+  /**
+   * When split by hand, the parts it was divided into, each with its own category. The parts add up
+   * to `amount` exactly and share its sign; the imported fields above are never changed by a split.
+   */
+  splits?: Split[];
+}
+
+export interface Split {
+  /** In pence, with the same sign as the transaction's amount. */
+  amount: number;
+  category: string;
 }
 
 export interface Rule {

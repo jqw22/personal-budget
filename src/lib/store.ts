@@ -40,7 +40,12 @@ export function renameCategory(data: BudgetData, from: string, to: string): Budg
     ...(data.essential ? { essential: [...new Set(data.essential.map(rename))] } : {}),
     ...(forecast ? { forecast } : {}),
     rules: data.rules.map((r) => ({ ...r, category: rename(r.category) })),
-    transactions: data.transactions.map((t) => (t.category === from ? { ...t, category: to } : t)),
+    transactions: data.transactions.map((t) => {
+      const next = t.category === from ? { ...t, category: to } : t;
+      return next.splits?.some((p) => p.category === from)
+        ? { ...next, splits: next.splits.map((p) => (p.category === from ? { ...p, category: to } : p)) }
+        : next;
+    }),
   };
 }
 

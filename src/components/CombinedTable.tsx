@@ -4,6 +4,7 @@ import { categoryHistory, closingBalances, forecastFrom, groupSpending, UNTAGGED
 import type { BudgetData } from '../lib/types';
 import { BalanceChart, type ChartColumn } from './BalanceChart';
 import { MoneyInput, net, shortMonth } from './forecastParts';
+import { expandSplits } from '../lib/splits';
 
 interface Props {
   data: BudgetData;
@@ -53,14 +54,16 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
     return () => observer.disconnect();
   });
   const saved = data.forecast ?? {};
-  const history = month ? categoryHistory(data.transactions, month, count) : null;
-  const fc = forecastFrom(data.transactions, saved, opening, data.categories);
+  // Split transactions count as their parts; `data` itself is only ever saved back unchanged.
+  const transactions = expandSplits(data.transactions);
+  const history = month ? categoryHistory(transactions, month, count) : null;
+  const fc = forecastFrom(transactions, saved, opening, data.categories);
   const actualMonths = history?.months ?? [];
-  const withData = new Set(data.transactions.map((t) => t.date.slice(0, 7)));
-  const ytdHistory = averageTo ? categoryHistory(data.transactions, averageTo, 1) : null;
+  const withData = new Set(transactions.map((t) => t.date.slice(0, 7)));
+  const ytdHistory = averageTo ? categoryHistory(transactions, averageTo, 1) : null;
   const avgOver = ytdHistory?.ytd.months ?? 0;
   const average = (amount: number) => (avgOver ? Math.round(amount / avgOver) : 0);
-  const actualClosing = history && opening !== null ? closingBalances(data.transactions, opening, actualMonths) : null;
+  const actualClosing = history && opening !== null ? closingBalances(transactions, opening, actualMonths) : null;
 
   function set(m: string, row: string, pence: number | null) {
     const rows = { ...saved[m] };

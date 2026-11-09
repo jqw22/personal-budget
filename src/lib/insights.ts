@@ -1,4 +1,5 @@
 import { ClaudeError, FALLBACK_BETA, MODEL, poundsAndPence, replyText, withClaude } from './claude';
+import { expandSplits } from './splits';
 import { impliedOpeningBalance } from './export';
 import { categoryHistory, closingBalances, forecastFrom, monthsWithData, UNTAGGED } from './summary';
 import type { BudgetData } from './types';
@@ -16,7 +17,9 @@ const pounds = (pence: number) => Math.round(pence / 100);
  * short merchant name, category and amount. Full bank descriptions, which
  * carry references and account details, stay on the device.
  */
-export function reviewData(data: BudgetData, today: string) {
+export function reviewData(budget: BudgetData, today: string) {
+  // Split transactions count as their parts, each in its own category.
+  const data = { ...budget, transactions: expandSplits(budget.transactions) };
   const months = monthsWithData(data.transactions);
   const latest = months.at(-1);
   if (!latest) return null;

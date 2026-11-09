@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
 import { emptyData, isEssential, renameCategory, sortedCategories } from '../lib/store';
 import { NOT_SPENDING } from '../lib/summary';
@@ -44,8 +45,13 @@ export function RulesView({ data, onChange }: Props) {
 
   function removeCategory(name: string) {
     const rules = data.rules.filter((r) => r.category !== name);
+    // A split with a part in this category goes back to one untagged transaction.
     const transactions = data.transactions.map((t) =>
-      t.category === name ? { ...t, category: null, categorySource: null } : t,
+      t.splits?.some((p) => p.category === name)
+        ? withSplit(t, null)
+        : t.category === name
+          ? { ...t, category: null, categorySource: null }
+          : t,
     );
     onChange({
       ...data,
@@ -58,7 +64,7 @@ export function RulesView({ data, onChange }: Props) {
 
   const categories = sortedCategories(data.categories);
   const counts = new Map<string, number>();
-  for (const t of data.transactions) if (t.category) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
+  for (const t of expandSplits(data.transactions)) if (t.category) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
   const rulesFor = (c: string) => data.rules.filter((r) => r.category === c).length;
   const inUse = (c: string) => (counts.get(c) ?? 0) > 0 || rulesFor(c) > 0;
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;

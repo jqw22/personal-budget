@@ -51,7 +51,7 @@ export function toCsv(transactions: Transaction[], balances?: Map<string, number
       t.amount < 0 ? pounds(-t.amount) : '',
       ...(withBalance ? [balance === null ? '' : pounds(balance)] : []),
       t.merchant,
-      t.category ?? '',
+      t.splits?.length ? `Split: ${t.splits.map((p) => `${p.category} £${pounds(Math.abs(p.amount))}`).join('; ')}` : (t.category ?? ''),
       t.id,
     ]);
   }

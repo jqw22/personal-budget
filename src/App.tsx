@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccountView, syncLabel } from './components/AccountView';
 import { ImportView } from './components/ImportView';
+import { isTagged } from './lib/splits';
 import { InsightsView } from './components/InsightsView';
 import { RulesView } from './components/RulesView';
 import { SummaryView } from './components/SummaryView';
@@ -28,7 +29,7 @@ export function App() {
   const [storageUsed, setStorageUsed] = useState<number | null>(0);
   useEffect(() => setStorageUsed(saveData(data)), [data]);
 
-  const untagged = data.transactions.filter((t) => !t.category).length;
+  const untagged = data.transactions.filter((t) => !isTagged(t)).length;
 
   return (
     <div className="app">
