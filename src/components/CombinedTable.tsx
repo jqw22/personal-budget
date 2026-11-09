@@ -23,6 +23,7 @@ interface Props {
 }
 
 const INCOME = 'Income';
+const TRANSFERS = 'Transfers';
 
 /** "Jun", or "Jan 27" for January so the turn of the year reads. */
 function colMonth(m: string): string {
@@ -163,6 +164,26 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
                   edited={saved[m]?.[INCOME] !== undefined}
                   label={`Income, ${label(m)}`}
                   onCommit={(p) => set(m, INCOME, p)}
+                />
+              </td>
+            ))}
+          </tr>
+          {/* Moves the balance but isn't income or spending, so it's left out of the under / over spend. */}
+          <tr className="transfers-row">
+            <td>
+              <button className="link name" title="See Transfers transactions" onClick={() => onShowTransactions(month, 'Transfers')}>
+                Transfers
+              </button>
+            </td>
+            {actualMonths.map((m, i) => actualCell(m, history!.transfers[i], 'td', 'muted', 'Transfers'))}
+            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.transfers ?? 0))}</td>
+            {fc.months.map((m, i) => (
+              <td key={`f${m}`} className={`num ${i === 0 ? 'fc-start' : ''}`}>
+                <MoneyInput
+                  value={fc.transfers[i]}
+                  edited={saved[m]?.[TRANSFERS] !== undefined}
+                  label={`Transfers, ${label(m)}`}
+                  onCommit={(p) => set(m, TRANSFERS, p)}
                 />
               </td>
             ))}
