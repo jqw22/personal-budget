@@ -99,9 +99,9 @@ export function latestByTag(events: Event[]): Map<string, Event> {
   return latest;
 }
 
-/** Keeps whichever copy carries more of the user's own work: a hand-picked category beats a rule's. */
+/** Keeps whichever copy carries more of the user's own work: a split beats a hand-picked category, which beats a rule's. */
 function pick(local: Transaction, remote: Transaction): Transaction {
-  const rank = (t: Transaction) => (t.categorySource === 'manual' ? 2 : t.category ? 1 : 0);
+  const rank = (t: Transaction) => (t.splits?.length ? 3 : t.categorySource === 'manual' ? 2 : t.category ? 1 : 0);
   return rank(remote) > rank(local) ? remote : local;
 }
 

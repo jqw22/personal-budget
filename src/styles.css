@@ -803,3 +803,44 @@ button.link.figure:focus-visible {
   color: var(--accent);
   text-decoration: underline;
 }
+
+/* Splitting a transaction into parts. */
+button.link.split-button {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  text-decoration: underline;
+}
+
+.split-parts {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+table.transactions tr.split-row td {
+  background: var(--bg);
+}
+
+.split-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.split-editor > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.split-editor .split-rest {
+  display: inline-block;
+  min-width: 5.5em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.split-editor .split-actions {
+  flex-basis: 100%;
+}

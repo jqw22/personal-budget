@@ -15,6 +15,7 @@ import {
 import { impliedOpeningBalance } from '../lib/export';
 import type { BudgetData } from '../lib/types';
 import { CombinedTable } from './CombinedTable';
+import { expandSplits } from '../lib/splits';
 
 interface Props {
   data: BudgetData;
@@ -27,15 +28,17 @@ interface Props {
 const MONTHS_SHOWN = 4;
 
 export function SummaryView({ data, onShowTransactions, onChange }: Props) {
-  const allMonths = useMemo(() => monthsWithData(data.transactions), [data.transactions]);
+  // Split transactions count as their parts, each in its own category.
+  const transactions = useMemo(() => expandSplits(data.transactions), [data.transactions]);
+  const allMonths = useMemo(() => monthsWithData(transactions), [transactions]);
   // A month still being filled in is only in the forecast, as the rest of it.
-  const part = useMemo(() => partMonth(data.transactions), [data.transactions]);
+  const part = useMemo(() => partMonth(transactions), [transactions]);
   const months = useMemo(() => allMonths.filter((m) => m !== part), [allMonths, part]);
   const [picked, setMonth] = useState(() => months.at(-1) ?? '');
   // The picked month, or the latest complete one if that has gone (e.g. it is now the part month).
   const month = months.includes(picked) ? picked : (months.at(-1) ?? '');
-  const history = useMemo(() => (month ? categoryHistory(data.transactions, month, MONTHS_SHOWN) : null), [
-    data.transactions,
+  const history = useMemo(() => (month ? categoryHistory(transactions, month, MONTHS_SHOWN) : null), [
+    transactions,
     month,
   ]);
 
@@ -50,12 +53,12 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
 
   const index = months.indexOf(month);
   const untaggedSpent = history?.rows.find((r) => r.category === UNTAGGED)?.amounts.at(-1) ?? 0;
-  const monthTransactions = data.transactions.filter((t) => t.date.startsWith(month));
+  const monthTransactions = transactions.filter((t) => t.date.startsWith(month));
   const firstDay = Number(monthTransactions[0]?.date.slice(8));
   const lastDay = Number(monthTransactions.at(-1)?.date.slice(8));
   // A finished month can end on its last working day, so only a late start makes it partial.
   const partial = monthTransactions.length > 0 && firstDay > 1;
-  const opening = impliedOpeningBalance(data.transactions);
+  const opening = impliedOpeningBalance(transactions);
   // The latest 12 months with data and the forecast's months after them, whichever month the tables show.
   const latest = allMonths[allMonths.length - 1];
   // The chart runs from the first actual column to the end of the forecast, under the table's columns.
@@ -64,9 +67,9 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   let chartLast = latest;
   for (let i = 0; i < FORECAST_MONTHS; i++) chartLast = nextMonth(chartLast);
   const chartEnd = lastDayOf(chartLast);
-  const days = opening === null ? [] : dailyBalances(data.transactions, opening, `${chartStart}-01`, chartEnd);
+  const days = opening === null ? [] : dailyBalances(transactions, opening, `${chartStart}-01`, chartEnd);
   const lastActual = days.at(-1);
-  const forecast = lastActual ? dailyForecast(data.transactions, data.forecast, lastActual, chartEnd, data.categories) : [];
+  const forecast = lastActual ? dailyForecast(transactions, data.forecast, lastActual, chartEnd, data.categories) : [];
 
   return (
     <section>

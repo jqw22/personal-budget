@@ -1,4 +1,5 @@
 import { FALLBACK_BETA, MODEL, poundsAndPence, replyText, withClaude, ClaudeError } from './claude';
+import { isTagged } from './splits';
 import { NOT_SPENDING } from './summary';
 import type { BudgetData } from './types';
 
@@ -22,7 +23,7 @@ export interface TagSuggestion extends UntaggedMerchant {
 /** Each merchant with untagged transactions, most transactions first. */
 export function untaggedMerchants(data: BudgetData): UntaggedMerchant[] {
   const amounts = new Map<string, number[]>();
-  for (const t of data.transactions) if (!t.category) amounts.set(t.merchant, [...(amounts.get(t.merchant) ?? []), t.amount]);
+  for (const t of data.transactions) if (!isTagged(t)) amounts.set(t.merchant, [...(amounts.get(t.merchant) ?? []), t.amount]);
   return [...amounts]
     .map(([merchant, list]) => ({ merchant, count: list.length, typical: [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)] }))
     .sort((a, b) => b.count - a.count || a.merchant.localeCompare(b.merchant));
