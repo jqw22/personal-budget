@@ -1,4 +1,5 @@
 import type { Event } from 'nostr-tools';
+import { withSplit } from './splits';
 import { applyRules } from './rules';
 import { migrate } from './store';
 import { DEFAULT_CATEGORIES, type BudgetData, type Rule, type Transaction } from './types';
@@ -15,7 +16,7 @@ const SETTINGS = `${PREFIX}settings`;
 const PART_BYTES = 20000;
 
 function settingsJson(data: BudgetData): string {
-  return JSON.stringify({ version: data.version, categories: data.categories, essential: data.essential, rules: data.rules, forecast: data.forecast, openingBalance: data.openingBalance, goals: data.goals, anthropicKey: data.anthropicKey, insight: data.insight });
+  return JSON.stringify({ version: data.version, categories: data.categories, essential: data.essential, rules: data.rules, forecast: data.forecast, openingBalance: data.openingBalance, goals: data.goals, anthropicKey: data.anthropicKey, insight: data.insight, deletedCategories: data.deletedCategories });
 }
 
 export function isOurs(d: string): boolean {
@@ -66,7 +67,7 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     transactions.push(...(JSON.parse(plaintext).transactions as Transaction[]));
   }
   if (!settings && transactions.length === 0) return null;
-  const { version, categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight } = settings
+  const { version, categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight, deletedCategories } = settings
     ? JSON.parse(settings)
     : { version: undefined, categories: [], rules: [] };
   return migrate({
@@ -79,6 +80,7 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     ...(goals ? { goals } : {}),
     ...(anthropicKey ? { anthropicKey } : {}),
     ...(insight ? { insight } : {}),
+    ...(deletedCategories?.length ? { deletedCategories } : {}),
     transactions: dedupe(transactions).sort((a, b) => a.date.localeCompare(b.date)),
   });
 }
@@ -114,10 +116,12 @@ function isUntouched(data: BudgetData): boolean {
 }
 
 /**
- * Every category, rule and goal from both sides; this device's rule wins where both match the same
- * merchant, and the newer insights review is kept.
+ * Every category, rule and goal from both sides, except categories either side deleted; this
+ * device's rule wins where both match the same merchant, and the newer insights review is kept.
  */
 function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
+  const deleted = new Set([...(local.deletedCategories ?? []), ...(remote.deletedCategories ?? [])]);
+  const kept = (c: string) => !deleted.has(c);
   const rules: Rule[] = [...local.rules];
   const known = new Set(local.rules.map((r) => r.match.toUpperCase()));
   for (const r of remote.rules) if (!known.has(r.match.toUpperCase())) rules.push(r);
@@ -126,9 +130,10 @@ function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
   const insight = !local.insight || (remote.insight && remote.insight.at > local.insight.at) ? remote.insight : local.insight;
   return {
     ...local,
-    categories: [...new Set([...local.categories, ...remote.categories])],
-    essential: [...new Set([...(local.essential ?? []), ...(remote.essential ?? [])])],
-    rules,
+    categories: [...new Set([...local.categories, ...remote.categories])].filter(kept),
+    essential: [...new Set([...(local.essential ?? []), ...(remote.essential ?? [])])].filter(kept),
+    rules: rules.filter((r) => kept(r.category)),
+    deletedCategories: [...deleted],
     forecast: mergeForecast(local.forecast, remote.forecast),
     openingBalance: local.openingBalance ?? remote.openingBalance,
     goals: local.goals || remote.goals ? goals : undefined,
@@ -154,13 +159,13 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
   // A device that has never been used only has the starting categories, so it takes the saved ones
   // as they are rather than adding back defaults the user removed or renamed.
   if (isUntouched(local)) return remote;
-  const { categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight } = mergeSettings(local, remote);
+  const { categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight, deletedCategories } = mergeSettings(local, remote);
   const byId = new Map(local.transactions.map((t) => [t.id, t]));
   for (const t of remote.transactions) {
     const mine = byId.get(t.id);
     byId.set(t.id, mine ? pick(mine, t) : t);
   }
-  const transactions = [...byId.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const transactions = untagDeleted([...byId.values()], deletedCategories).sort((a, b) => a.date.localeCompare(b.date));
 
   return {
     version: Math.max(local.version ?? 1, remote.version ?? 1),
@@ -172,8 +177,22 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
     ...(goals ? { goals } : {}),
     ...(anthropicKey ? { anthropicKey } : {}),
     ...(insight ? { insight } : {}),
+    ...(deletedCategories?.length ? { deletedCategories } : {}),
     transactions: applyRules(transactions, rules),
   };
+}
+
+/** Transactions tagged with a deleted category go back to untagged, and splits using one are undone. */
+function untagDeleted(transactions: Transaction[], deleted: string[] | undefined): Transaction[] {
+  if (!deleted?.length) return transactions;
+  const gone = new Set(deleted);
+  return transactions.map((t) =>
+    t.splits?.some((p) => gone.has(p.category))
+      ? withSplit(t, null)
+      : t.category && gone.has(t.category)
+        ? { ...t, category: null, categorySource: null }
+        : t,
+  );
 }
 
 /**
@@ -188,7 +207,7 @@ export function applyRemote(local: BudgetData, base: Map<string, string>, incomi
     const remote = { ...local, ...JSON.parse(settings) } as BudgetData;
     const unchangedHere = !base.has(SETTINGS) || base.get(SETTINGS) === settingsJson(local);
     next = unchangedHere
-      ? { ...local, categories: remote.categories, essential: remote.essential, rules: remote.rules, forecast: remote.forecast, openingBalance: remote.openingBalance, goals: remote.goals, anthropicKey: remote.anthropicKey, insight: remote.insight }
+      ? { ...local, categories: remote.categories, essential: remote.essential, rules: remote.rules, forecast: remote.forecast, openingBalance: remote.openingBalance, goals: remote.goals, anthropicKey: remote.anthropicKey, insight: remote.insight, deletedCategories: remote.deletedCategories }
       : mergeSettings(local, remote);
   }
 
@@ -205,6 +224,6 @@ export function applyRemote(local: BudgetData, base: Map<string, string>, incomi
       if (!mine || JSON.stringify(mine) === before.get(t.id)) byId.set(t.id, t);
     }
   }
-  const transactions = [...byId.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const transactions = untagDeleted([...byId.values()], next.deletedCategories).sort((a, b) => a.date.localeCompare(b.date));
   return { ...next, transactions: applyRules(transactions, next.rules) };
 }

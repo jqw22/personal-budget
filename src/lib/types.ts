@@ -66,6 +66,11 @@ export interface BudgetData {
   goals?: Goal[];
   /** The user's own Anthropic API key, for the insights review. */
   anthropicKey?: string;
+  /**
+   * Categories the user removed or renamed away, so that combining with another device or the
+   * relays doesn't bring them back. Adding a category again takes it off this list.
+   */
+  deletedCategories?: string[];
   insight?: Insight;
   /** Data format version, so saved data can be upgraded when defaults change. */
   version?: number;

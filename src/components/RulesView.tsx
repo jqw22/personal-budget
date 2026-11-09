@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
-import { emptyData, isEssential, renameCategory, sortedCategories } from '../lib/store';
+import { emptyData, isEssential, renameCategory, sortedCategories, forgetDeleted } from '../lib/store';
 import { NOT_SPENDING } from '../lib/summary';
 import type { BudgetData, Rule } from '../lib/types';
 
@@ -26,7 +26,7 @@ export function RulesView({ data, onChange }: Props) {
   function addCategory() {
     const name = newCategory.trim();
     if (!name || !newType || data.categories.includes(name)) return;
-    onChange(setType({ ...data, categories: [...data.categories, name] }, name, newType));
+    onChange(setType({ ...data, categories: [...data.categories, name], deletedCategories: forgetDeleted(data.deletedCategories, name) }, name, newType));
     setNewCategory('');
     setNewType('');
   }
@@ -56,6 +56,7 @@ export function RulesView({ data, onChange }: Props) {
     onChange({
       ...data,
       categories: data.categories.filter((c) => c !== name),
+      deletedCategories: [...new Set([...(data.deletedCategories ?? []), name])],
       essential: (data.essential ?? []).filter((c) => c !== name),
       rules,
       transactions: applyRules(transactions, rules),
