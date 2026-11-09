@@ -52,12 +52,15 @@ export interface CategoryHistory {
   totals: number[];
   /** Money tagged as Income per month, in pence. */
   income: number[];
+  /** Net money tagged as Transfers per month, in pence: positive when more came in than went out. */
+  transfers: number[];
   /** Calendar year to date, up to and including the last month shown. */
   ytd: {
     /** Months this year with any transactions, which the monthly averages divide by. */
     months: number;
     total: number;
     income: number;
+    transfers: number;
   };
 }
 
@@ -80,12 +83,15 @@ export function categoryHistory(transactions: Transaction[], endMonth: string, c
     .sort((a, b) => b.ytd - a.ytd || b.amounts[count - 1] - a.amounts[count - 1]);
   const incomeIn = (list: Transaction[]) => sum(list.filter((t) => t.category === 'Income').map((t) => t.amount));
   const income = months.map((m) => incomeIn(transactions.filter((t) => t.date.startsWith(m))));
+  const transfersIn = (list: Transaction[]) => sum(list.filter((t) => t.category === 'Transfers').map((t) => t.amount));
+  const transfers = months.map((m) => transfersIn(transactions.filter((t) => t.date.startsWith(m))));
   return {
     months,
     rows,
     totals: perMonth.map((totals) => sum(totals.values())),
     income,
-    ytd: { months: ytdMonths.size, total: sum(ytd.values()), income: incomeIn(thisYear) },
+    transfers,
+    ytd: { months: ytdMonths.size, total: sum(ytd.values()), income: incomeIn(thisYear), transfers: transfersIn(thisYear) },
   };
 }
 
@@ -158,6 +164,8 @@ export interface Forecast {
   restOf: string | null;
   /** Income per month, in pence. */
   income: number[];
+  /** Net transfers per month, in pence: £0 unless typed in. They move the balance but aren't income or spending. */
+  transfers: number[];
   /** Spending per category, one amount per month, in pence. */
   rows: { category: string; amounts: number[] }[];
   totals: number[];
@@ -203,7 +211,7 @@ export function forecastFrom(
 ): Forecast {
   const first = monthsWithData(transactions)[0];
   const latest = monthsWithData(transactions).at(-1);
-  if (!latest) return { months: [], restOf: null, income: [], rows: [], totals: [], closing: [] };
+  if (!latest) return { months: [], restOf: null, income: [], transfers: [], rows: [], totals: [], closing: [] };
   const restOf = partMonth(transactions);
   const history = categoryHistory(transactions, restOf && first !== latest ? previousMonth(latest) : latest, 1);
   const actual = categoryHistory(transactions, latest, 1);
@@ -214,6 +222,7 @@ export function forecastFrom(
   const amount = (m: string, row: string, ytd: number, soFar: number) =>
     figures[m]?.[row] ?? (m === restOf ? Math.max(0, average(ytd) - soFar) : average(ytd));
   const income = months.map((m) => amount(m, 'Income', history.ytd.income, actual.income[0]));
+  const transfers = months.map((m) => figures[m]?.Transfers ?? 0);
   const spent = new Set(history.rows.map((r) => r.category));
   const rowCategories = [
     ...history.rows.map((r) => r.category),
@@ -229,9 +238,9 @@ export function forecastFrom(
   const closing: number[] = [];
   if (opening !== null) {
     const now = transactions.reduce((balance, t) => balance + t.amount, opening);
-    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? now) + income[i] - totals[i]);
+    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? now) + income[i] + transfers[i] - totals[i]);
   }
-  return { months, restOf, income, rows, totals, closing };
+  return { months, restOf, income, transfers, rows, totals, closing };
 }
 
 function daysInMonth(month: string): number {
@@ -293,6 +302,7 @@ export function dailyForecast(
   const forecast = forecastFrom(transactions, figures, null, categories, count);
   const spending = new Map(forecast.months.map((m, i) => [m, forecast.totals[i]]));
   const income = new Map(forecast.months.map((m, i) => [m, forecast.income[i]]));
+  const transfers = new Map(forecast.months.map((m, i) => [m, forecast.transfers[i]]));
   const paydays = incomePaydays(transactions, fromMonth);
 
   const fromDay = Number(from.date.slice(8));
@@ -309,11 +319,11 @@ export function dailyForecast(
     const date = Number(day.slice(8));
     const monthIncome = income.get(month) ?? 0;
     if (month === fromMonth) {
-      balance -= (spending.get(month) ?? 0) / daysLeft;
+      balance += ((transfers.get(month) ?? 0) - (spending.get(month) ?? 0)) / daysLeft;
       if (dueShare === 0) balance += monthIncome / daysLeft;
       for (const p of due) if (Math.min(p.day, length) === date) balance += (monthIncome * p.share) / dueShare;
     } else {
-      balance -= (spending.get(month) ?? 0) / length;
+      balance += ((transfers.get(month) ?? 0) - (spending.get(month) ?? 0)) / length;
       if (paydays.length === 0) balance += monthIncome / length;
       for (const p of paydays) if (Math.min(p.day, length) === date) balance += monthIncome * p.share;
     }
