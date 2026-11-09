@@ -30,13 +30,15 @@ export function MoneyInput({
     setText(null);
     if (text.trim() === '') return onCommit(null);
     const pence = parseMoney(text);
-    if (pence !== null && pence !== value) onCommit(Math.round(Math.abs(pence) / 100) * 100);
+    // Negative figures are allowed, e.g. a refund expected in a spending category.
+    if (pence !== null && pence !== value) onCommit(Math.round(pence / 100) * 100);
   }
 
   return (
     <input
       className={`forecast-input ${edited ? 'edited' : ''}`}
-      inputMode="decimal"
+      // Not a number pad: phones leave the minus sign off those.
+      inputMode="text"
       aria-label={label}
       title={edited ? 'Your figure. Clear it to go back to the forecast.' : 'Forecast. Type to change it.'}
       value={shown}
