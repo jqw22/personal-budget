@@ -186,3 +186,25 @@ describe('keySigner', () => {
     await expect(other.decrypt(payload)).rejects.toThrow();
   });
 });
+
+describe('deleted categories', () => {
+  it('stay deleted when combined with a copy that still has them', () => {
+    const t = { id: 'x', date: '2026-09-01', description: 'PUB', merchant: 'PUB', amount: -500, balance: null, category: 'Drinks', categorySource: 'manual' as const };
+    const local = { ...emptyData(), categories: ['Living/Food'], deletedCategories: ['Drinks'], transactions: [{ ...t, category: null, categorySource: null }] };
+    const remote = {
+      ...emptyData(),
+      categories: ['Living/Food', 'Drinks'],
+      essential: ['Drinks'],
+      rules: [{ id: 'r', match: 'PUB', category: 'Drinks' }],
+      transactions: [t],
+    };
+    const merged = mergeData(local, remote);
+    expect(merged.categories).toEqual(['Living/Food']);
+    expect(merged.essential).toEqual([]);
+    expect(merged.rules).toEqual([]);
+    expect(merged.deletedCategories).toEqual(['Drinks']);
+    expect(merged.transactions[0].category).toBeNull();
+    // And the deletion travels with the saved settings to other devices.
+    expect(fromChunks(toChunks(merged))?.deletedCategories).toEqual(['Drinks']);
+  });
+});

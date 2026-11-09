@@ -18,6 +18,11 @@ export function emptyData(): BudgetData {
   return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], essential: [], version: VERSION };
 }
 
+/** The deleted-categories list without `name`, for when a category of that name is wanted again. */
+export function forgetDeleted(deleted: string[] | undefined, name: string): string[] {
+  return [...new Set((deleted ?? []).filter((c) => c !== name))];
+}
+
 /** Categories in A to Z order, for showing in lists and dropdowns. */
 export function sortedCategories(categories: string[]): string[] {
   return [...categories].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
@@ -37,6 +42,7 @@ export function renameCategory(data: BudgetData, from: string, to: string): Budg
   return {
     ...data,
     categories: [...new Set(data.categories.map(rename))],
+    deletedCategories: forgetDeleted([...(data.deletedCategories ?? []), from], to),
     ...(data.essential ? { essential: [...new Set(data.essential.map(rename))] } : {}),
     ...(forecast ? { forecast } : {}),
     rules: data.rules.map((r) => ({ ...r, category: rename(r.category) })),
