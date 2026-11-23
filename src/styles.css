@@ -1027,10 +1027,10 @@ table.summary.combined .num {
   display: none;
 }
 
-/* The summary on one landscape page across; its heading rows repeat at the top of each page. */
+/* The summary on one portrait page across; its heading rows repeat at the top of each page. */
 @media print {
   @page {
-    size: A4 landscape;
+    size: A4 portrait;
     margin: 8mm;
   }
 

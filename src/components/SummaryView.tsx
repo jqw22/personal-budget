@@ -20,8 +20,8 @@ interface Props {
   onChange: (data: BudgetData) => void;
 }
 
-/** The width a landscape A4 page leaves for the table, in CSS pixels, inside the print margins. */
-const PRINT_WIDTH = 1040;
+/** The width a portrait A4 page leaves for the table, in CSS pixels, inside the 8mm print margins. */
+const PRINT_WIDTH = 725;
 
 /** Prints the summary scaled down, if it needs to be, so the whole year fits one page across. */
 function printSummary() {
