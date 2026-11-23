@@ -1094,3 +1094,21 @@ table.summary.combined .num {
     padding: 0;
   }
 }
+
+/* The summary's text sizes, each 1pt smaller than the app's usual ones. Boxes and links inherit. */
+table.summary.combined,
+table.summary.combined td {
+  font-size: calc(1rem - 1pt);
+}
+
+table.summary.combined th {
+  font-size: calc(0.85rem - 1pt);
+}
+
+table.summary.combined :is(tr.subtotal, tfoot tr) th {
+  font-size: calc(1rem - 1pt);
+}
+
+table.summary.combined :is(tr.section, tr.halves) th {
+  font-size: calc(0.8rem - 1pt);
+}
