@@ -61,9 +61,12 @@ export function RulesView({ data, onChange }: Props) {
     });
   }
 
-  // Income and Transfers aren't spending, so they stay at the top; the rest are A to Z below them.
+  // Not spending (Income, Transfers) at the top, then each spending type in summary order, each A to Z.
   const sorted = sortedCategories(data.categories);
-  const categories = [...sorted.filter((c) => NOT_SPENDING.includes(c)), ...sorted.filter((c) => !NOT_SPENDING.includes(c))];
+  const categories = [
+    ...sorted.filter((c) => NOT_SPENDING.includes(c)),
+    ...CATEGORY_TYPES.flatMap(({ type }) => sorted.filter((c) => !NOT_SPENDING.includes(c) && categoryType(data, c) === type)),
+  ];
   const counts = new Map<string, number>();
   for (const t of expandSplits(data.transactions)) if (t.category) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
   const rulesFor = (c: string) => data.rules.filter((r) => r.category === c).length;
