@@ -757,7 +757,7 @@ form.reply textarea {
 
 /* One table: this year so far and its average, then the actual months and the forecast. */
 table.summary.combined {
-  min-width: 1200px;
+  min-width: 1000px;
 }
 
 /* Month columns share whatever is left after the three frozen ones. */
@@ -775,8 +775,8 @@ table.summary.combined col.ytd-col + col {
 }
 
 table.summary.combined {
-  --frozen-category: 140px;
-  --frozen-figure: 76px;
+  --frozen-category: 130px;
+  --frozen-figure: 72px;
 }
 
 /* Category, YTD and Average stay in view while the months scroll sideways. */
@@ -832,13 +832,13 @@ table.summary.combined td {
 
 table.summary.combined input.forecast-input {
   width: 100%;
-  max-width: 4.5em;
+  max-width: 4em;
 }
 
 table.summary.combined th,
 table.summary.combined td {
-  padding-left: 4px;
-  padding-right: 4px;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 /* Keep category names in view while the months scroll sideways. */
