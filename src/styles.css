@@ -746,22 +746,50 @@ form.reply textarea {
   margin-top: 0;
 }
 
-/* One table: actual months, the forecast, then the average. */
+/* One table: this year so far and its average, then the actual months and the forecast. */
 table.summary.combined {
-  min-width: 860px;
+  min-width: 1000px;
 }
 
+/* Month columns share whatever is left after the three frozen ones. */
 table.summary.combined col {
-  width: 8.6%;
+  width: auto;
 }
 
 table.summary.combined col.category-col {
-  width: 14%;
+  width: var(--frozen-category);
 }
 
-table.summary.combined .avg-col {
-  border-left: 2px solid var(--border);
+table.summary.combined col.ytd-col,
+table.summary.combined col.ytd-col + col {
+  width: var(--frozen-figure);
+}
+
+table.summary.combined {
+  --frozen-category: 140px;
+  --frozen-figure: 76px;
+}
+
+/* Category, YTD and Average stay in view while the months scroll sideways. */
+table.summary.combined :is(th, td).ytd-col,
+table.summary.combined :is(th, td).avg-col {
+  position: sticky;
+  z-index: 1;
   background: var(--avg);
+}
+
+/* Each overlaps the one before by a pixel, so no sliver of a scrolled month shows between them. */
+table.summary.combined :is(th, td).ytd-col {
+  left: calc(var(--frozen-category) - 1px);
+}
+
+table.summary.combined :is(th, td).avg-col {
+  left: calc(var(--frozen-category) + var(--frozen-figure) - 2px);
+}
+
+/* The months start after a line, as the forecast does. */
+table.summary.combined .avg-col + * {
+  border-left: 2px solid var(--border);
 }
 
 table.summary.combined .fc-start {
@@ -802,7 +830,7 @@ table.summary.combined td {
   padding-right: 4px;
 }
 
-/* Keep category names in view while the months scroll sideways on a phone. */
+/* Keep category names in view while the months scroll sideways. */
 table.summary.combined tr > :first-child {
   position: sticky;
   left: 0;
