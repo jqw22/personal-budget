@@ -809,7 +809,8 @@ table.summary.combined :is(th, td):is(.budget-col, .diff-col, .ytd-col, .avg-col
 /* Thin grey separator columns: after the category names, after December and before the budget. */
 table.summary.combined tr > :first-child:not([colspan]) + *,
 table.summary.combined :is(th, td):is(.ytd-col, .budget-col, .ytd-start, .budget-start) {
-  border-left: 6px solid var(--separator);
+  /* About a quarter of a month column. */
+  border-left: 15px solid var(--separator);
 }
 
 table.summary.combined .fc-start {
