@@ -202,6 +202,8 @@ export function partMonth(transactions: Transaction[]): string | null {
  * `categories` with nothing spent yet get a row too, so a figure can be typed
  * in for them. Closing balances build on the actual balance after the latest
  * transaction. Categories in `unforecast` start at zero instead of their average.
+ * With `wholePartMonth`, the part month is forecast as a whole month like the
+ * ones after it, and its closing balance builds on the previous month's.
  */
 export function forecastFrom(
   transactions: Transaction[],
@@ -210,6 +212,7 @@ export function forecastFrom(
   categories: string[] = [],
   count = FORECAST_MONTHS,
   unforecast: string[] = [],
+  wholePartMonth = false,
 ): Forecast {
   const first = monthsWithData(transactions)[0];
   const latest = monthsWithData(transactions).at(-1);
@@ -222,7 +225,7 @@ export function forecastFrom(
 
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
   const amount = (m: string, row: string, ytd: number, soFar: number) =>
-    figures[m]?.[row] ?? (m === restOf ? Math.max(0, average(ytd) - soFar) : average(ytd));
+    figures[m]?.[row] ?? (m === restOf && !wholePartMonth ? Math.max(0, average(ytd) - soFar) : average(ytd));
   const income = months.map((m) => amount(m, 'Income', history.ytd.income, actual.income[0]));
   const transfers = months.map((m) => figures[m]?.Transfers ?? 0);
   const spent = new Set(history.rows.map((r) => r.category));
@@ -240,7 +243,8 @@ export function forecastFrom(
   const totals = months.map((_, i) => rows.reduce((total, r) => total + r.amounts[i], 0));
   const closing: number[] = [];
   if (opening !== null) {
-    const now = transactions.reduce((balance, t) => balance + t.amount, opening);
+    const start = wholePartMonth && restOf ? `${restOf}-01` : null;
+    const now = transactions.reduce((balance, t) => (start && t.date >= start ? balance : balance + t.amount), opening);
     for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? now) + income[i] + transfers[i] - totals[i]);
   }
   return { months, restOf, income, transfers, rows, totals, closing };

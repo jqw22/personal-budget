@@ -95,6 +95,18 @@ describe('forecastFrom with types left out', () => {
   });
 });
 
+describe('forecastFrom with the whole part month', () => {
+  it('forecasts the part month like a full one and builds its closing balance on the month before', () => {
+    const list = [tx('2026-05-03', -3000, 'Going Out'), tx('2026-05-29', 10000, 'Income'), tx('2026-06-02', -2500, 'Going Out')];
+    const whole = forecastFrom(list, {}, 0, [], 1, [], true);
+    expect(whole.restOf).toBe('2026-06');
+    expect(whole.rows[0].amounts).toEqual([3000, 3000]);
+    expect(whole.income).toEqual([10000, 10000]);
+    expect(whole.closing).toEqual([14000, 21000]);
+    expect(forecastFrom(list, {}, 0, [], 1).rows[0].amounts).toEqual([500, 3000]);
+  });
+});
+
 describe('dailyBalances', () => {
   it('gives the balance at the end of every day from the first transaction to the last', () => {
     const list = [tx('2026-05-30', -500, null), tx('2026-05-30', -500, null), tx('2026-06-02', 2000, null)];

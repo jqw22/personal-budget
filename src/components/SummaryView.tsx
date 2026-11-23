@@ -31,7 +31,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   // Split transactions count as their parts, each in its own category.
   const transactions = useMemo(() => expandSplits(data.transactions), [data.transactions]);
   const allMonths = useMemo(() => monthsWithData(transactions), [transactions]);
-  // A month still being filled in is only in the forecast, as the rest of it.
+  // A month still being filled in is only in the forecast, as a whole month.
   const part = useMemo(() => partMonth(transactions), [transactions]);
   const months = useMemo(() => allMonths.filter((m) => m !== part), [allMonths, part]);
   const [picked, setMonth] = useState(() => months.at(-1) ?? '');

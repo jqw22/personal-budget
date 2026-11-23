@@ -58,7 +58,7 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
   // Split transactions count as their parts; `data` itself is only ever saved back unchanged.
   const transactions = expandSplits(data.transactions);
   const history = month ? categoryHistory(transactions, month, count) : null;
-  const fc = forecastFrom(transactions, saved, opening, data.categories, undefined, unforecastCategories(data, data.categories));
+  const fc = forecastFrom(transactions, saved, opening, data.categories, undefined, unforecastCategories(data, data.categories), true);
   const actualMonths = history?.months ?? [];
   const withData = new Set(transactions.map((t) => t.date.slice(0, 7)));
   const ytdHistory = averageTo ? categoryHistory(transactions, averageTo, 1) : null;
