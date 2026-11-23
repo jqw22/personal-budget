@@ -203,9 +203,9 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
               </th>
             ))}
             <th className="num ytd-col" title={`The whole of ${year}: actual months plus the forecast`}>
-              YTD
+              Total
             </th>
-            <th className="num avg-col" title={`YTD divided by 12`}>
+            <th className="num avg-col" title={`Total divided by 12`}>
               Average
             </th>
           </tr>
