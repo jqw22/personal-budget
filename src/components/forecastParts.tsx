@@ -26,7 +26,8 @@ export function MoneyInput({
   onCommit: (pence: number | null) => void;
 }) {
   const [text, setText] = useState<string | null>(null);
-  const shown = text ?? String(Math.round(value / 100));
+  // Shown with thousands commas like every other figure; typing accepts them or not.
+  const shown = text ?? formatPounds(value);
 
   function commit() {
     if (text === null) return;
