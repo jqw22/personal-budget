@@ -1,10 +1,11 @@
-const money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });
+// Amounts are shown without a currency symbol.
+const money = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function formatMoney(pence: number): string {
   return money.format(pence / 100);
 }
 
-const pounds = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+const pounds = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
 
 /** Rounded to the nearest pound, for summary tables. */
 export function formatPounds(pence: number): string {
