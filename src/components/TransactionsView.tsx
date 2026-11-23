@@ -38,6 +38,8 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const [category, setCategory] = useState<string>(initialFilter?.category ?? 'all');
   const [remember, setRemember] = useState(false);
   const [search, setSearch] = useState('');
+  /** Tagged by a merchant rule (auto), by hand (including splits), or either. */
+  const [source, setSource] = useState<'all' | 'auto' | 'manual'>('all');
   const [sort, setSort] = useState<Sort>('date');
   /** The transaction whose split is being edited. */
   const [splitting, setSplitting] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
         category === 'all' ||
         (category === UNTAGGED_FILTER ? !isTagged(t) : t.category === category || t.splits?.some((p) => p.category === category)),
     )
+    .filter((t) => source === 'all' || (source === 'auto' ? t.categorySource === 'rule' && !t.splits?.length : t.categorySource === 'manual'))
     .filter((t) => !search || `${t.description}\n${t.note ?? ''}`.toLowerCase().includes(search.toLowerCase()))
     .slice()
     .reverse();
@@ -135,6 +138,11 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
               {c}
             </option>
           ))}
+        </select>
+        <select value={source} onChange={(e) => setSource(e.target.value as typeof source)} aria-label="Tagged by">
+          <option value="all">Auto and by hand</option>
+          <option value="auto">Auto only</option>
+          <option value="manual">By hand only</option>
         </select>
         <input type="search" placeholder="Search descriptions and notes" value={search} onChange={(e) => setSearch(e.target.value)} />
         <label title="When you tag a transaction, tag every other transaction from the same place the same way">
