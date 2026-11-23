@@ -8,6 +8,8 @@ import { expandSplits } from '../lib/splits';
 
 interface Props {
   data: BudgetData;
+  /** The calendar year shown, such as "2026": the budget column is this year's. */
+  year: string;
   /** The last complete month the actual columns end at. Empty when there is none yet. */
   month: string;
   /** How many actual months to show. */
@@ -33,8 +35,8 @@ function colMonth(m: string): string {
   return m.endsWith('-01') ? `${name} ${year}` : name;
 }
 
-/** This year so far and its monthly average, then the actual months and the forecast, in one table with a row per category. */
-export function CombinedTable({ data, month, count, forecastCount, averageTo, opening, onShowTransactions, onChange, days, forecast }: Props) {
+/** The year's budget, the actual months and the forecast, then this year so far and its monthly average, in one table with a row per category. */
+export function CombinedTable({ data, year, month, count, forecastCount, averageTo, opening, onShowTransactions, onChange, days, forecast }: Props) {
   const table = useRef<HTMLTableElement>(null);
   const [layout, setLayout] = useState<{ columns: ChartColumn[]; width: number }>({ columns: [], width: 0 });
   // The chart's months sit exactly under the table's month columns, so measure them.
@@ -71,6 +73,28 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
   const average = (amount: number) => (avgOver ? Math.round(amount / avgOver) : 0);
   const actualClosing = history && opening !== null ? closingBalances(transactions, opening, actualMonths) : null;
 
+  const budgets = data.budgets?.[year] ?? {};
+  const budget = (row: string) => budgets[row] ?? 0;
+  function setBudget(row: string, pence: number | null) {
+    const rows = { ...budgets };
+    if (pence === null || pence === 0) delete rows[row];
+    else rows[row] = pence;
+    const next = { ...data.budgets, [year]: rows };
+    if (Object.keys(rows).length === 0) delete next[year];
+    onChange({ ...data, budgets: next });
+  }
+  const budgetCell = (row: string) => (
+    <td className="num budget-col">
+      <MoneyInput
+        value={budget(row)}
+        edited={budgets[row] !== undefined}
+        label={`${row} budget, ${year}`}
+        hint={`Your budget for ${row} in ${year}. Type to change it.`}
+        onCommit={(p) => setBudget(row, p)}
+      />
+    </td>
+  );
+
   function set(m: string, row: string, pence: number | null) {
     const rows = { ...saved[m] };
     if (pence === null) delete rows[row];
@@ -92,7 +116,9 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
     };
   });
   const groups = groupSpending(rows, data);
-  const span = 1 + 2 + actualMonths.length + fc.months.length;
+  const totalOf = (list: typeof rows, pick: (r: (typeof rows)[number]) => number) => list.reduce((t, r) => t + pick(r), 0);
+  const budgetSpending = totalOf(rows, (r) => (r.category === UNTAGGED ? 0 : budget(r.category)));
+  const span = 1 + 1 + 2 + actualMonths.length + fc.months.length;
   const label = colMonth;
   /** A figure for a month; given a row to open, clicking it shows the transactions behind it. */
   const actualCell = (m: string, amount: number, Cell: 'td' | 'th' = 'td', className = '', open?: string) => (
@@ -112,41 +138,39 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
       )}
     </Cell>
   );
-  const totalOf = (list: typeof rows, pick: (r: (typeof rows)[number]) => number) => list.reduce((t, r) => t + pick(r), 0);
 
   return (
     <div className="table-wrap summary-wrap">
       <table className="summary combined" ref={table}>
         <colgroup>
           <col className="category-col" />
-          <col className="ytd-col" />
-          <col />
+          <col className="budget-col" />
           {actualMonths.map((m) => (
             <col key={m} />
           ))}
           {fc.months.map((m) => (
             <col key={`f${m}`} />
           ))}
+          <col className="ytd-col" />
+          <col className="avg-col" />
         </colgroup>
         <thead>
           <tr className="halves">
             <th />
-            <th className="ytd-col" />
-            <th className="avg-col" />
+            <th className="budget-col" />
             {actualMonths.length > 0 && <th colSpan={actualMonths.length}>Actual</th>}
             {fc.months.length > 0 && (
               <th colSpan={fc.months.length} className="fc fc-start">
                 Forecast
               </th>
             )}
+            <th className="ytd-col" />
+            <th className="avg-col" />
           </tr>
           <tr>
             <th>Category</th>
-            <th className="num ytd-col" title={averageTo ? `January to ${shortMonth(averageTo)}` : undefined}>
-              YTD
-            </th>
-            <th className="num avg-col" title={averageTo ? `January to ${shortMonth(averageTo)}, divided by ${avgOver} month${avgOver === 1 ? '' : 's'} with data` : undefined}>
-              Average
+            <th className="num budget-col" title={`Your budget for the whole of ${year}`}>
+              Budget
             </th>
             {actualMonths.map((m) => (
               <th key={m} className="num" data-month={m}>
@@ -158,6 +182,12 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                 {label(m)}
               </th>
             ))}
+            <th className="num ytd-col" title={averageTo ? `January to ${shortMonth(averageTo)}` : undefined}>
+              YTD
+            </th>
+            <th className="num avg-col" title={averageTo ? `January to ${shortMonth(averageTo)}, divided by ${avgOver} month${avgOver === 1 ? '' : 's'} with data` : undefined}>
+              Average
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -167,8 +197,7 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                 Income
               </button>
             </td>
-            <td className="num ytd-col">{formatPounds(ytdHistory?.ytd.income ?? 0)}</td>
-            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.income ?? 0))}</td>
+            {budgetCell(INCOME)}
             {actualMonths.map((m, i) => actualCell(m, history!.income[i], 'td', '', 'Income'))}
             {fc.months.map((m, i) => (
               <td key={`f${m}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
@@ -180,6 +209,8 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                 />
               </td>
             ))}
+            <td className="num ytd-col">{formatPounds(ytdHistory?.ytd.income ?? 0)}</td>
+            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.income ?? 0))}</td>
           </tr>
           {/* Moves the balance but isn't income or spending, so it's left out of the under / over spend. */}
           <tr className="transfers-row">
@@ -188,8 +219,7 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                 Transfers
               </button>
             </td>
-            <td className="num ytd-col">{formatPounds(ytdHistory?.ytd.transfers ?? 0)}</td>
-            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.transfers ?? 0))}</td>
+            {budgetCell(TRANSFERS)}
             {actualMonths.map((m, i) => actualCell(m, history!.transfers[i], 'td', 'muted', 'Transfers'))}
             {fc.months.map((m, i) => (
               <td key={`f${m}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
@@ -201,6 +231,8 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                 />
               </td>
             ))}
+            <td className="num ytd-col">{formatPounds(ytdHistory?.ytd.transfers ?? 0)}</td>
+            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.transfers ?? 0))}</td>
           </tr>
           {groups.map((group) => (
             <Fragment key={group.label ?? UNTAGGED}>
@@ -221,8 +253,7 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                       {r.category}
                     </button>
                   </td>
-                  <td className="num ytd-col">{formatPounds(r.ytd)}</td>
-                  <td className="num avg-col">{formatPounds(average(r.ytd))}</td>
+                  {r.category === UNTAGGED ? <td className="num budget-col" /> : budgetCell(r.category)}
                   {actualMonths.map((m, i) => actualCell(m, r.actual[i], 'td', 'muted', r.category))}
                   {fc.months.map((m, i) => (
                     <td key={`f${m}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
@@ -236,20 +267,23 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                       )}
                     </td>
                   ))}
+                  <td className="num ytd-col">{formatPounds(r.ytd)}</td>
+                  <td className="num avg-col">{formatPounds(average(r.ytd))}</td>
                 </tr>
               ))}
               {group.label && (
                 <tr className="subtotal">
                   {/* The heading above names the type, so its total row needs no label. */}
                   <th aria-label={`${group.label} total`} />
-                  <th className="num ytd-col">{formatPounds(totalOf(group.rows, (r) => r.ytd))}</th>
-                  <th className="num avg-col">{formatPounds(average(totalOf(group.rows, (r) => r.ytd)))}</th>
+                  <th className="num budget-col">{formatPounds(totalOf(group.rows, (r) => budget(r.category)))}</th>
                   {actualMonths.map((m, i) => actualCell(m, totalOf(group.rows, (r) => r.actual[i]), 'th'))}
                   {fc.months.map((m, i) => (
                     <th key={`f${m}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
                       {formatPounds(totalOf(group.rows, (r) => r.forecast?.[i] ?? 0))}
                     </th>
                   ))}
+                  <th className="num ytd-col">{formatPounds(totalOf(group.rows, (r) => r.ytd))}</th>
+                  <th className="num avg-col">{formatPounds(average(totalOf(group.rows, (r) => r.ytd)))}</th>
                 </tr>
               )}
             </Fragment>
@@ -258,14 +292,15 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
         <tfoot>
           <tr>
             <th>Total spending</th>
-            <th className="num ytd-col">{formatPounds(ytdHistory?.ytd.total ?? 0)}</th>
-            <th className="num avg-col">{formatPounds(average(ytdHistory?.ytd.total ?? 0))}</th>
+            <th className="num budget-col">{formatPounds(budgetSpending)}</th>
             {actualMonths.map((m, i) => actualCell(m, history!.totals[i], 'th'))}
             {fc.totals.map((t, i) => (
               <th key={`f${fc.months[i]}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
                 {formatPounds(t)}
               </th>
             ))}
+            <th className="num ytd-col">{formatPounds(ytdHistory?.ytd.total ?? 0)}</th>
+            <th className="num avg-col">{formatPounds(average(ytdHistory?.ytd.total ?? 0))}</th>
           </tr>
           <tr className="gap-row" aria-hidden="true">
             <td colSpan={span} />
@@ -273,12 +308,8 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
           <tr className="net-row">
             <th>Under / over spend</th>
             {(() => {
-              const amount = (ytdHistory?.ytd.income ?? 0) - (ytdHistory?.ytd.total ?? 0);
-              return <th className={`num ytd-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
-            })()}
-            {(() => {
-              const amount = average(ytdHistory?.ytd.income ?? 0) - average(ytdHistory?.ytd.total ?? 0);
-              return <th className={`num avg-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
+              const amount = budget(INCOME) - budgetSpending;
+              return <th className={`num budget-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
             {actualMonths.map((m, i) => {
               const amount = history!.income[i] - history!.totals[i];
@@ -296,18 +327,27 @@ export function CombinedTable({ data, month, count, forecastCount, averageTo, op
                 </th>
               );
             })}
+            {(() => {
+              const amount = (ytdHistory?.ytd.income ?? 0) - (ytdHistory?.ytd.total ?? 0);
+              return <th className={`num ytd-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
+            })()}
+            {(() => {
+              const amount = average(ytdHistory?.ytd.income ?? 0) - average(ytdHistory?.ytd.total ?? 0);
+              return <th className={`num avg-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
+            })()}
           </tr>
           {opening !== null && (
             <tr className="balance-row">
               <th>Closing balance</th>
-              <th className="ytd-col" />
-              <th className="avg-col" />
+              <th className="budget-col" />
               {actualMonths.map((m, i) => actualCell(m, actualClosing![i], 'th'))}
               {fc.closing.map((b, i) => (
                 <th key={`f${fc.months[i]}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
                   {formatPounds(b)}
                 </th>
               ))}
+              <th className="ytd-col" />
+              <th className="avg-col" />
             </tr>
           )}
         </tfoot>

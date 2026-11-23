@@ -72,6 +72,8 @@ export interface BudgetData {
    * row ("Income" or a spending category). Rows left out use the monthly average.
    */
   forecast?: Record<string, Record<string, number>>;
+  /** Year budgets typed in by the user, in pence, by year ("2026") then row ("Income", "Transfers" or a spending category). */
+  budgets?: Record<string, Record<string, number>>;
   /** Balance before the first transaction, in pence, typed in by the user for the running balance in downloads. */
   openingBalance?: number;
   /** Financial goals the insights review checks progress against. */

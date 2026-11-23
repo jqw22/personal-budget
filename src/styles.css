@@ -760,7 +760,7 @@ table.summary.combined {
   min-width: 1000px;
 }
 
-/* Month columns share whatever is left after the three frozen ones. */
+/* Month columns share whatever is left after the fixed-width ones. */
 table.summary.combined col {
   width: auto;
 }
@@ -769,8 +769,7 @@ table.summary.combined col.category-col {
   width: var(--frozen-category);
 }
 
-table.summary.combined col.ytd-col,
-table.summary.combined col.ytd-col + col {
+table.summary.combined :is(col.budget-col, col.ytd-col, col.avg-col) {
   width: var(--frozen-figure);
 }
 
@@ -779,25 +778,21 @@ table.summary.combined {
   --frozen-figure: 72px;
 }
 
-/* Category, YTD and Average stay in view while the months scroll sideways. */
-table.summary.combined :is(th, td).ytd-col,
-table.summary.combined :is(th, td).avg-col {
-  position: sticky;
-  z-index: 1;
+table.summary.combined :is(th, td):is(.budget-col, .ytd-col, .avg-col) {
   background: var(--avg);
 }
 
-/* Each overlaps the one before by a pixel, so no sliver of a scrolled month shows between them. */
-table.summary.combined :is(th, td).ytd-col {
+/* Category and Budget stay in view while the months scroll sideways; Budget overlaps Category
+   by a pixel so no sliver of a scrolled month shows between them. */
+table.summary.combined :is(th, td).budget-col {
+  position: sticky;
+  z-index: 1;
   left: calc(var(--frozen-category) - 1px);
 }
 
-table.summary.combined :is(th, td).avg-col {
-  left: calc(var(--frozen-category) + var(--frozen-figure) - 2px);
-}
-
-/* The months start after a line, as the forecast does. */
-table.summary.combined .avg-col + * {
+/* The months start after a line, as the forecast and the year so far do. */
+table.summary.combined .budget-col + *,
+table.summary.combined :is(th, td).ytd-col {
   border-left: 2px solid var(--border);
 }
 
@@ -1000,6 +995,6 @@ table.summary.combined thead th {
 
 /* Where frozen columns meet the frozen rows, the cells sit above both. */
 table.summary.combined thead tr > :first-child,
-table.summary.combined thead :is(th.ytd-col, th.avg-col) {
+table.summary.combined thead th.budget-col {
   z-index: 3;
 }

@@ -15,11 +15,14 @@ export function MoneyInput({
   value,
   edited,
   label,
+  hint,
   onCommit,
 }: {
   value: number;
   edited: boolean;
   label: string;
+  /** Hover text in place of the forecast's own. */
+  hint?: string;
   onCommit: (pence: number | null) => void;
 }) {
   const [text, setText] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export function MoneyInput({
       // Not a number pad: phones leave the minus sign off those.
       inputMode="text"
       aria-label={label}
-      title={edited ? 'Your figure. Clear it to go back to the forecast.' : 'Forecast. Type to change it.'}
+      title={hint ?? (edited ? 'Your figure. Clear it to go back to the forecast.' : 'Forecast. Type to change it.')}
       value={shown}
       onFocus={(e) => e.target.select()}
       onChange={(e) => setText(e.target.value)}

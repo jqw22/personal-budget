@@ -110,6 +110,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
       <h2>Income and spend</h2>
       <CombinedTable
         data={data}
+        year={year}
         month={month}
         count={month ? monthsIntoYear(month) : 0}
         forecastCount={forecastCount}

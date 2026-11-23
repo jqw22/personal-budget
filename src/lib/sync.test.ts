@@ -104,6 +104,16 @@ describe('applyRemote', () => {
   });
 });
 
+describe('budget sync', () => {
+  it('round-trips year budgets and merges them, this device winning per year and row', () => {
+    const budgets = { '2026': { Income: 3600000, Rent: 1440000 } };
+    expect(fromChunks(toChunks(data([tx('a', '2026-05-01')], { budgets })))!.budgets).toEqual(budgets);
+    const local = data([tx('a', '2026-05-01')], { budgets: { '2026': { Rent: 1 } } });
+    const remote = data([], { budgets: { '2026': { Rent: 2, Income: 3 }, '2025': { Income: 4 } } });
+    expect(mergeData(local, remote).budgets).toEqual({ '2026': { Rent: 1, Income: 3 }, '2025': { Income: 4 } });
+  });
+});
+
 describe('forecast sync', () => {
   const forecast = { '2026-07': { Income: 200000, Holidays: 50000 } };
 

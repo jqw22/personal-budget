@@ -30,17 +30,20 @@ export function sortedCategories(categories: string[]): string[] {
   return [...categories].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
 }
 
-/** Renames a category everywhere it's used: the category list, its type, rules, forecast figures and tagged transactions. */
+/** Renames a category everywhere it's used: the category list, its type, rules, forecast figures, budgets and tagged transactions. */
 export function renameCategory(data: BudgetData, from: string, to: string): BudgetData {
   const rename = (c: string) => (c === from ? to : c);
-  const forecast = data.forecast
-    ? Object.fromEntries(
-        Object.entries(data.forecast).map(([month, rows]) => [
-          month,
-          Object.fromEntries(Object.entries(rows).map(([row, pence]) => [rename(row), pence])),
-        ]),
-      )
-    : undefined;
+  const renameRows = (figures: BudgetData['forecast']) =>
+    figures
+      ? Object.fromEntries(
+          Object.entries(figures).map(([key, rows]) => [
+            key,
+            Object.fromEntries(Object.entries(rows).map(([row, pence]) => [rename(row), pence])),
+          ]),
+        )
+      : undefined;
+  const forecast = renameRows(data.forecast);
+  const budgets = renameRows(data.budgets);
   return {
     ...data,
     categories: [...new Set(data.categories.map(rename))],
@@ -50,6 +53,7 @@ export function renameCategory(data: BudgetData, from: string, to: string): Budg
       ? { categoryTypes: Object.fromEntries(Object.entries(data.categoryTypes).map(([c, type]) => [rename(c), type])) }
       : {}),
     ...(forecast ? { forecast } : {}),
+    ...(budgets ? { budgets } : {}),
     rules: data.rules.map((r) => ({ ...r, category: rename(r.category) })),
     transactions: data.transactions.map((t) => {
       const next = t.category === from ? { ...t, category: to } : t;
