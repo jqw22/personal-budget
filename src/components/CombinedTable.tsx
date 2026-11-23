@@ -352,7 +352,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
             <th className="num diff-col">{formatPounds(budgetSpending - ytd.total)}</th>
           </tr>
           <tr className="net-row">
-            <th>Under / over spend</th>
+            <th>Income - spend</th>
             {actualMonths.map((m, i) => {
               const amount = history!.income[i] - history!.totals[i];
               return (
