@@ -32,9 +32,13 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   // A month still being filled in is only in the forecast, as a whole month.
   const part = useMemo(() => partMonth(transactions), [transactions]);
   const months = useMemo(() => allMonths.filter((m) => m !== part), [allMonths, part]);
-  const years = useMemo(() => [...new Set(allMonths.map((m) => m.slice(0, 4)))], [allMonths]);
-  const [picked, setYear] = useState(() => years.at(-1) ?? '');
-  const year = years.includes(picked) ? picked : (years.at(-1) ?? '');
+  // Every year with data, plus the one after the latest so its budget can be set ahead.
+  const years = useMemo(() => {
+    const list = [...new Set(allMonths.map((m) => m.slice(0, 4)))];
+    return list.length ? [...list, String(Number(list.at(-1)) + 1)] : list;
+  }, [allMonths]);
+  const [picked, setYear] = useState(() => years.at(-2) ?? '');
+  const year = years.includes(picked) ? picked : (years.at(-2) ?? '');
   // The table runs January to December of the picked year: complete months as actuals, then the
   // forecast up to the end of the year, which only the latest year has.
   const month = months.filter((m) => m.startsWith(year)).at(-1) ?? '';
@@ -52,8 +56,10 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const index = years.indexOf(year);
   const latest = allMonths[allMonths.length - 1];
   const isLatestYear = latest.startsWith(year);
-  // Whole months after the latest one with data, up to December; the part month comes on top.
-  const forecastCount = isLatestYear ? 12 - monthsIntoYear(latest) : null;
+  const isNextYear = year > latest.slice(0, 4);
+  // Whole months after the latest one with data, up to December of the picked year; the part month
+  // comes on top. Next year is all forecast, carrying on from the rest of this one.
+  const forecastCount = isLatestYear ? 12 - monthsIntoYear(latest) : isNextYear ? 24 - monthsIntoYear(latest) : null;
   const untaggedSpent = history?.rows.find((r) => r.category === UNTAGGED)?.amounts.at(-1) ?? 0;
   const firstMonth = allMonths.find((m) => m.startsWith(year)) ?? '';
   const firstTransactions = transactions.filter((t) => t.date.startsWith(firstMonth));
@@ -74,7 +80,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
 
   return (
     <section>
-      {years.length > 1 && (
+      {years.length > 0 && (
         <div className="month-picker">
           <button aria-label="Previous year" disabled={index <= 0} onClick={() => setYear(years[index - 1])}>
             ‹

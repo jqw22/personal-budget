@@ -35,6 +35,21 @@ function colMonth(m: string): string {
   return m.endsWith('-01') ? `${name} ${year}` : name;
 }
 
+/** Just the forecast months in `year`: next year's forecast is worked out from the rest of this one, then trimmed. */
+function inYear(fc: ReturnType<typeof forecastFrom>, year: string): ReturnType<typeof forecastFrom> {
+  const from = fc.months.findIndex((m) => m.startsWith(year));
+  if (from <= 0) return fc;
+  return {
+    ...fc,
+    months: fc.months.slice(from),
+    income: fc.income.slice(from),
+    transfers: fc.transfers.slice(from),
+    rows: fc.rows.map((r) => ({ ...r, amounts: r.amounts.slice(from) })),
+    totals: fc.totals.slice(from),
+    closing: fc.closing.slice(from),
+  };
+}
+
 /** The year's budget, the actual months and the forecast, then this year so far and its monthly average, in one table with a row per category. */
 export function CombinedTable({ data, year, month, count, forecastCount, averageTo, opening, onShowTransactions, onChange, days, forecast }: Props) {
   const table = useRef<HTMLTableElement>(null);
@@ -62,10 +77,12 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
   // Split transactions count as their parts; `data` itself is only ever saved back unchanged.
   const transactions = expandSplits(data.transactions);
   const history = month ? categoryHistory(transactions, month, count) : null;
-  const fc =
+  const fc = inYear(
     forecastCount === null
       ? { months: [], restOf: null, income: [], transfers: [], rows: [], totals: [], closing: [] }
-      : forecastFrom(transactions, saved, opening, data.categories, forecastCount, unforecastCategories(data, data.categories), true);
+      : forecastFrom(transactions, saved, opening, data.categories, forecastCount, unforecastCategories(data, data.categories), true),
+    year,
+  );
   const actualMonths = history?.months ?? [];
   const withData = new Set(transactions.map((t) => t.date.slice(0, 7)));
   const ytdHistory = averageTo ? categoryHistory(transactions, averageTo, 1) : null;
