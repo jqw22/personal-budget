@@ -90,7 +90,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
       : [];
 
   return (
-    <section>
+    <section className="summary-section">
       {years.length > 0 && (
         <div className="month-picker">
           <button aria-label="Previous year" disabled={index <= 0} onClick={() => setYear(years[index - 1])}>

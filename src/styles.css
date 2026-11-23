@@ -305,6 +305,25 @@ form.inline {
   max-width: 1600px;
 }
 
+/* The header keeps the same width on every tab, so the title never moves when the summary widens. */
+.app.wide > header {
+  max-width: calc(960px - 32px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* A scrollbar appearing on a longer tab doesn't nudge everything sideways. */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* The summary sits centred, as wide as its table. */
+.summary-section {
+  width: min-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
 .month-picker {
   display: flex;
   gap: 6px;
