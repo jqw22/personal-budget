@@ -755,14 +755,15 @@ form.reply textarea {
   margin-top: 0;
 }
 
-/* One table: this year so far and its average, then the actual months and the forecast. */
+/* One table: the year's budget, the actual months and the forecast, then the year's total and average.
+   It's only as wide as its figures need rather than stretching to fill the page. */
 table.summary.combined {
-  min-width: 1000px;
+  width: auto;
+  min-width: 0;
 }
 
-/* Month columns share whatever is left after the fixed-width ones. */
 table.summary.combined col {
-  width: auto;
+  width: var(--month);
 }
 
 table.summary.combined col.category-col {
@@ -775,7 +776,8 @@ table.summary.combined :is(col.budget-col, col.ytd-col, col.avg-col) {
 
 table.summary.combined {
   --frozen-category: 130px;
-  --frozen-figure: 72px;
+  --frozen-figure: 68px;
+  --month: 56px;
 }
 
 table.summary.combined :is(th, td):is(.budget-col, .ytd-col, .avg-col) {
@@ -827,7 +829,7 @@ table.summary.combined td {
 
 table.summary.combined input.forecast-input {
   width: 100%;
-  max-width: 4em;
+  max-width: 3.6em;
 }
 
 table.summary.combined th,
@@ -997,4 +999,21 @@ table.summary.combined thead th {
 table.summary.combined thead tr > :first-child,
 table.summary.combined thead th.budget-col {
   z-index: 3;
+}
+
+/* A year's budget runs to more digits than a month's figure, so its box takes the whole column. */
+table.summary.combined td.budget-col input.forecast-input {
+  max-width: none;
+}
+
+/* Category never narrows below its frozen width, so the frozen Budget column sits flush against it. */
+table.summary.combined tr > :first-child:not([colspan]) {
+  min-width: var(--frozen-category);
+  max-width: var(--frozen-category);
+  box-sizing: border-box;
+}
+
+/* A little room on the left so neighbouring figures never run together. */
+table.summary.combined .num {
+  padding-left: 5px;
 }

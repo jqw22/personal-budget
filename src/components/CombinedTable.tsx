@@ -16,8 +16,6 @@ interface Props {
   count: number;
   /** How many whole months to forecast after the latest with data (the part month comes on top), or null for none. */
   forecastCount: number | null;
-  /** The last actual month: YTD and Average are January of its year up to it. */
-  averageTo: string;
   opening: number | null;
   onShowTransactions: (month: string, category: string | null) => void;
   onChange: (data: BudgetData) => void;
@@ -51,7 +49,7 @@ function inYear(fc: ReturnType<typeof forecastFrom>, year: string): ReturnType<t
 }
 
 /** The year's budget, the actual months and the forecast, then this year so far and its monthly average, in one table with a row per category. */
-export function CombinedTable({ data, year, month, count, forecastCount, averageTo, opening, onShowTransactions, onChange, days, forecast }: Props) {
+export function CombinedTable({ data, year, month, count, forecastCount, opening, onShowTransactions, onChange, days, forecast }: Props) {
   const table = useRef<HTMLTableElement>(null);
   const [layout, setLayout] = useState<{ columns: ChartColumn[]; width: number }>({ columns: [], width: 0 });
   // The chart's months sit exactly under the table's month columns, so measure them.
@@ -85,9 +83,14 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
   );
   const actualMonths = history?.months ?? [];
   const withData = new Set(transactions.map((t) => t.date.slice(0, 7)));
-  const ytdHistory = averageTo ? categoryHistory(transactions, averageTo, 1) : null;
-  const avgOver = ytdHistory?.ytd.months ?? 0;
-  const average = (amount: number) => (avgOver ? Math.round(amount / avgOver) : 0);
+  // YTD is the whole year: actual months plus the forecast to December. Average spreads it over 12.
+  const sum = (list: number[]) => list.reduce((t, n) => t + n, 0);
+  const ytd = {
+    income: sum(history?.income ?? []) + sum(fc.income),
+    transfers: sum(history?.transfers ?? []) + sum(fc.transfers),
+    total: sum(history?.totals ?? []) + sum(fc.totals),
+  };
+  const average = (amount: number) => Math.round(amount / 12);
   const actualClosing = history && opening !== null ? closingBalances(transactions, opening, actualMonths) : null;
 
   const budgets = data.budgets?.[year] ?? {};
@@ -128,7 +131,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
     return {
       category,
       actual: a?.amounts ?? actualMonths.map(() => 0),
-      ytd: ytdHistory?.rows.find((r) => r.category === category)?.ytd ?? 0,
+      ytd: sum(a?.amounts ?? []) + sum(fc.rows.find((r) => r.category === category)?.amounts ?? []),
       forecast: fc.rows.find((r) => r.category === category)?.amounts ?? null,
     };
   });
@@ -199,10 +202,10 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
                 {label(m)}
               </th>
             ))}
-            <th className="num ytd-col" title={averageTo ? `January to ${shortMonth(averageTo)}` : undefined}>
+            <th className="num ytd-col" title={`The whole of ${year}: actual months plus the forecast`}>
               YTD
             </th>
-            <th className="num avg-col" title={averageTo ? `January to ${shortMonth(averageTo)}, divided by ${avgOver} month${avgOver === 1 ? '' : 's'} with data` : undefined}>
+            <th className="num avg-col" title={`YTD divided by 12`}>
               Average
             </th>
           </tr>
@@ -226,8 +229,8 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
                 />
               </td>
             ))}
-            <td className="num ytd-col">{formatPounds(ytdHistory?.ytd.income ?? 0)}</td>
-            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.income ?? 0))}</td>
+            <td className="num ytd-col">{formatPounds(ytd.income)}</td>
+            <td className="num avg-col">{formatPounds(average(ytd.income))}</td>
           </tr>
           {/* Moves the balance but isn't income or spending, so it's left out of the under / over spend. */}
           <tr className="transfers-row">
@@ -248,8 +251,8 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
                 />
               </td>
             ))}
-            <td className="num ytd-col">{formatPounds(ytdHistory?.ytd.transfers ?? 0)}</td>
-            <td className="num avg-col">{formatPounds(average(ytdHistory?.ytd.transfers ?? 0))}</td>
+            <td className="num ytd-col">{formatPounds(ytd.transfers)}</td>
+            <td className="num avg-col">{formatPounds(average(ytd.transfers))}</td>
           </tr>
           {groups.map((group) => (
             <Fragment key={group.label ?? UNTAGGED}>
@@ -316,8 +319,8 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
                 {formatPounds(t)}
               </th>
             ))}
-            <th className="num ytd-col">{formatPounds(ytdHistory?.ytd.total ?? 0)}</th>
-            <th className="num avg-col">{formatPounds(average(ytdHistory?.ytd.total ?? 0))}</th>
+            <th className="num ytd-col">{formatPounds(ytd.total)}</th>
+            <th className="num avg-col">{formatPounds(average(ytd.total))}</th>
           </tr>
           <tr className="gap-row" aria-hidden="true">
             <td colSpan={span} />
@@ -345,11 +348,11 @@ export function CombinedTable({ data, year, month, count, forecastCount, average
               );
             })}
             {(() => {
-              const amount = (ytdHistory?.ytd.income ?? 0) - (ytdHistory?.ytd.total ?? 0);
+              const amount = (ytd.income) - (ytd.total);
               return <th className={`num ytd-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
             {(() => {
-              const amount = average(ytdHistory?.ytd.income ?? 0) - average(ytdHistory?.ytd.total ?? 0);
+              const amount = average(ytd.income) - average(ytd.total);
               return <th className={`num avg-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
           </tr>

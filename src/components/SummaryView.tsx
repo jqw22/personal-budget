@@ -120,7 +120,6 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         month={month}
         count={month ? monthsIntoYear(month) : 0}
         forecastCount={forecastCount}
-        averageTo={month}
         opening={opening}
         onShowTransactions={onShowTransactions}
         onChange={onChange}
