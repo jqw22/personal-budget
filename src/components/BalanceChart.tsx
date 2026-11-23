@@ -79,7 +79,7 @@ export function BalanceChart({ columns, width, days, forecast = [] }: Props) {
   }
 
   return (
-    <>
+    <div className="balance-section">
       <h2>Daily closing balance</h2>
       <p className="muted small">
         Solid line: your actual balance at the end of each day, to {formatDate(days[days.length - 1].date)}.
@@ -148,6 +148,6 @@ export function BalanceChart({ columns, width, days, forecast = [] }: Props) {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

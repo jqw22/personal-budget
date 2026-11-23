@@ -19,7 +19,8 @@
   background: var(--bg);
 }
 
-@media (prefers-color-scheme: dark) {
+/* Screen only: a printout is always light. */
+@media screen and (prefers-color-scheme: dark) {
   :root {
     --bg: #161615;
     --surface: #1f1f1d;
@@ -1016,4 +1017,80 @@ table.summary.combined tr > :first-child:not([colspan]) {
 /* A little room on the left so neighbouring figures never run together. */
 table.summary.combined .num {
   padding-left: 5px;
+}
+
+.print-button {
+  margin-left: auto;
+}
+
+.print-only {
+  display: none;
+}
+
+/* The summary on one landscape page across; its heading rows repeat at the top of each page. */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  :root,
+  body {
+    background: #fff;
+  }
+
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  header,
+  nav,
+  .month-picker,
+  .warning {
+    display: none !important;
+  }
+
+  .print-only {
+    display: inline;
+  }
+
+  .app,
+  .app.wide {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .table-wrap.summary-wrap {
+    max-height: none;
+    overflow: visible;
+    border: none;
+    zoom: var(--print-zoom, 1);
+  }
+
+  table.summary.combined thead {
+    display: table-header-group;
+    position: static;
+  }
+
+  table.summary.combined :is(th, td) {
+    position: static !important;
+  }
+
+  /* Totals print once, at the end, not at the foot of every page. */
+  table.summary.combined tfoot {
+    display: table-row-group;
+  }
+
+  table.summary.combined tr,
+  .balance-section {
+    break-inside: avoid;
+  }
+
+  table.summary.combined input.forecast-input {
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
 }

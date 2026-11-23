@@ -20,6 +20,17 @@ interface Props {
   onChange: (data: BudgetData) => void;
 }
 
+/** The width a landscape A4 page leaves for the table, in CSS pixels, inside the print margins. */
+const PRINT_WIDTH = 1040;
+
+/** Prints the summary scaled down, if it needs to be, so the whole year fits one page across. */
+function printSummary() {
+  const table = document.querySelector<HTMLElement>('table.summary.combined');
+  const zoom = table ? Math.min(1, PRINT_WIDTH / table.scrollWidth) : 1;
+  document.documentElement.style.setProperty('--print-zoom', String(zoom));
+  window.print();
+}
+
 /** Months from January of `month`'s year up to and including it. */
 function monthsIntoYear(month: string): number {
   return Number(month.slice(5, 7));
@@ -95,6 +106,9 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
           <button aria-label="Next year" disabled={index >= years.length - 1} onClick={() => setYear(years[index + 1])}>
             ›
           </button>
+          <button className="print-button" onClick={printSummary}>
+            Print
+          </button>
         </div>
       )}
 
@@ -113,7 +127,9 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
         </p>
       )}
 
-      <h2>Income and spend</h2>
+      <h2>
+        Income and spend <span className="print-only">{year}</span>
+      </h2>
       <CombinedTable
         data={data}
         year={year}
