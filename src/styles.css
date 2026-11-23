@@ -1136,3 +1136,18 @@ table.summary.combined :is(tr.subtotal, tfoot tr) th {
 table.summary.combined :is(tr.section, tr.halves) th {
   font-size: calc(0.8rem - 1pt);
 }
+
+/* Merchant and amount sit close together; the category column takes any spare width. */
+table.transactions thead tr:first-child > th:nth-child(1),
+table.transactions thead tr:first-child > th:nth-child(3) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+table.transactions thead tr:first-child > th:nth-child(2) {
+  min-width: 160px;
+}
+
+table.transactions thead tr:first-child > th:nth-child(4) {
+  width: 100%;
+}

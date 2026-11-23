@@ -25,9 +25,9 @@ export interface TransactionFilter {
 }
 
 /** Newest first, biggest money out first, or biggest money in first. */
-type Sort = 'date' | 'amount-out' | 'amount-in';
+type Sort = 'date' | 'amount-out' | 'amount-in' | 'merchant';
 
-const NEXT_AMOUNT_SORT: Record<Sort, Sort> = { date: 'amount-out', 'amount-out': 'amount-in', 'amount-in': 'date' };
+const NEXT_AMOUNT_SORT: Record<Sort, Sort> = { date: 'amount-out', 'amount-out': 'amount-in', 'amount-in': 'date', merchant: 'amount-out' };
 
 export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const months = useMemo(
@@ -57,7 +57,9 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
     .filter((t) => !search || `${t.description}\n${t.note ?? ''}`.toLowerCase().includes(search.toLowerCase()))
     .slice()
     .reverse();
-  if (sort !== 'date') shown.sort((a, b) => (sort === 'amount-out' ? a.amount - b.amount : b.amount - a.amount));
+  // Merchant is A to Z, keeping each merchant's newest first.
+  if (sort === 'merchant') shown.sort((a, b) => a.merchant.localeCompare(b.merchant, 'en', { sensitivity: 'base' }));
+  else if (sort !== 'date') shown.sort((a, b) => (sort === 'amount-out' ? a.amount - b.amount : b.amount - a.amount));
 
   function tag(t: Transaction, category: string) {
     if (!category) {
@@ -171,8 +173,12 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                   Date{sort === 'date' && ' ▼'}
                 </button>
               </th>
-              <th>Merchant</th>
-              <th className="num" aria-sort={sort === 'date' ? undefined : sort === 'amount-out' ? 'ascending' : 'descending'}>
+              <th aria-sort={sort === 'merchant' ? 'ascending' : undefined}>
+                <button className="link sort" title="Sort by merchant, A to Z" onClick={() => setSort('merchant')}>
+                  Merchant{sort === 'merchant' && ' ▲'}
+                </button>
+              </th>
+              <th className="num" aria-sort={sort === 'amount-out' ? 'ascending' : sort === 'amount-in' ? 'descending' : undefined}>
                 <button
                   className="link sort"
                   title={
@@ -205,7 +211,6 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                   <td className="nowrap">{formatDate(t.date)}</td>
                   <td title={t.description}>
                     {t.merchant}
-                    <div className="sub">{t.description}</div>
                     {noting?.id === t.id ? (
                       <input
                         className="note-input"
