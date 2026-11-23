@@ -322,6 +322,9 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
           ))}
         </tbody>
         <tfoot>
+          <tr className="gap-row" aria-hidden="true">
+            <td colSpan={span} />
+          </tr>
           <tr>
             <th>Total spending</th>
             <th className="num budget-col">{formatPounds(budgetSpending)}</th>
@@ -333,9 +336,6 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
             ))}
             <th className="num ytd-col">{formatPounds(ytd.total)}</th>
             <th className="num avg-col">{formatPounds(average(ytd.total))}</th>
-          </tr>
-          <tr className="gap-row" aria-hidden="true">
-            <td colSpan={span} />
           </tr>
           <tr className="net-row">
             <th>Under / over spend</th>
