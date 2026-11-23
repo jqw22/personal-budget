@@ -233,7 +233,8 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
               ))}
               {group.label && (
                 <tr className="subtotal">
-                  <th>{group.label} total</th>
+                  {/* The heading above names the type, so its total row needs no label. */}
+                  <th aria-label={`${group.label} total`} />
                   <th className="num ytd-col">{formatPounds(totalOf(group.rows, (r) => r.ytd))}</th>
                   <th className="num avg-col">{formatPounds(average(totalOf(group.rows, (r) => r.ytd)))}</th>
                   {actualMonths.map((m, i) => actualCell(m, totalOf(group.rows, (r) => r.actual[i]), 'th'))}

@@ -345,6 +345,8 @@ table.summary tr.income-row td {
 table.summary tr.section th {
   padding-top: 14px;
   font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
