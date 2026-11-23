@@ -771,7 +771,7 @@ table.summary.combined col.category-col {
   width: var(--frozen-category);
 }
 
-table.summary.combined :is(col.budget-col, col.ytd-col, col.avg-col) {
+table.summary.combined :is(col.budget-col, col.diff-col, col.ytd-col, col.avg-col) {
   width: var(--frozen-figure);
 }
 
@@ -781,21 +781,13 @@ table.summary.combined {
   --month: 56px;
 }
 
-table.summary.combined :is(th, td):is(.budget-col, .ytd-col, .avg-col) {
+table.summary.combined :is(th, td):is(.budget-col, .diff-col, .ytd-col, .avg-col) {
   background: var(--avg);
 }
 
-/* Category and Budget stay in view while the months scroll sideways; Budget overlaps Category
-   by a pixel so no sliver of a scrolled month shows between them. */
-table.summary.combined :is(th, td).budget-col {
-  position: sticky;
-  z-index: 1;
-  left: calc(var(--frozen-category) - 1px);
-}
-
-/* The months start after a line, as the forecast and the year so far do. */
-table.summary.combined .budget-col + *,
-table.summary.combined :is(th, td).ytd-col {
+/* The months start after a line, as the forecast, the year's total and its budget do. */
+table.summary.combined tr:not(.section) > :first-child + *,
+table.summary.combined :is(th, td):is(.ytd-col, .budget-col) {
   border-left: 2px solid var(--border);
 }
 
@@ -997,8 +989,7 @@ table.summary.combined thead th {
 }
 
 /* Where frozen columns meet the frozen rows, the cells sit above both. */
-table.summary.combined thead tr > :first-child,
-table.summary.combined thead th.budget-col {
+table.summary.combined thead tr > :first-child {
   z-index: 3;
 }
 
