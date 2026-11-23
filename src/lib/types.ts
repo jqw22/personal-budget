@@ -57,6 +57,8 @@ export interface BudgetData {
   types?: string[];
   /** Each spending category's type, by category name. */
   categoryTypes?: Record<string, string>;
+  /** Types left out of the forecast: their categories' forecast starts at £0 instead of the average. */
+  noForecastTypes?: string[];
   /** Types the user removed, so syncing with another device doesn't bring them back. */
   deletedTypes?: string[];
   /** Before version 4: essential categories. Only read when upgrading. */
@@ -114,4 +116,10 @@ export function categoryType(data: Pick<BudgetData, 'types' | 'categoryTypes'>, 
   const types = typeList(data);
   const type = data.categoryTypes?.[category];
   return type && types.includes(type) ? type : types[types.length - 1];
+}
+
+/** Spending categories whose type is left out of the forecast. */
+export function unforecastCategories(data: Pick<BudgetData, 'types' | 'categoryTypes' | 'noForecastTypes'>, categories: string[]): string[] {
+  const off = data.noForecastTypes ?? [];
+  return off.length ? categories.filter((c) => off.includes(categoryType(data, c))) : [];
 }

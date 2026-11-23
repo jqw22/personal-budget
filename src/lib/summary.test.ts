@@ -85,6 +85,16 @@ describe('groupSpending with the user\'s own types', () => {
   });
 });
 
+describe('forecastFrom with types left out', () => {
+  it('starts their categories at zero but keeps a typed-in figure', () => {
+    const list = [tx('2026-05-03', -3000, 'Holidays'), tx('2026-05-04', -1000, 'Going Out'), tx('2026-05-29', 1000, 'Income')];
+    const fc = forecastFrom(list, { '2026-07': { Holidays: 5000 } }, null, [], 2, ['Holidays']);
+    expect(fc.months).toEqual(['2026-06', '2026-07']);
+    expect(fc.rows.find((r) => r.category === 'Holidays')!.amounts).toEqual([0, 5000]);
+    expect(fc.rows.find((r) => r.category === 'Going Out')!.amounts).toEqual([1000, 1000]);
+  });
+});
+
 describe('dailyBalances', () => {
   it('gives the balance at the end of every day from the first transaction to the last', () => {
     const list = [tx('2026-05-30', -500, null), tx('2026-05-30', -500, null), tx('2026-06-02', 2000, null)];

@@ -77,7 +77,14 @@ export function removeType(data: BudgetData, name: string): BudgetData {
   const types = typeList(data).filter((t) => t !== name);
   if (types.length === 0) return data;
   const categoryTypes = Object.fromEntries(Object.entries(data.categoryTypes ?? {}).filter(([, t]) => t !== name));
-  return { ...data, types, categoryTypes, deletedTypes: [...new Set([...(data.deletedTypes ?? []), name])] };
+  const noForecastTypes = (data.noForecastTypes ?? []).filter((t) => t !== name);
+  return { ...data, types, categoryTypes, noForecastTypes, deletedTypes: [...new Set([...(data.deletedTypes ?? []), name])] };
+}
+
+/** Includes a type in the forecast or leaves it out. */
+export function setTypeForecast(data: BudgetData, type: string, forecast: boolean): BudgetData {
+  const others = (data.noForecastTypes ?? []).filter((t) => t !== type);
+  return { ...data, noForecastTypes: forecast ? others : [...others, type] };
 }
 
 /** Moves a type one place up (-1) or down (+1) in the order. */
@@ -98,6 +105,7 @@ export function renameType(data: BudgetData, from: string, to: string): BudgetDa
     ...data,
     types: types.map((t) => (t === from ? to : t)),
     categoryTypes: Object.fromEntries(Object.entries(data.categoryTypes ?? {}).map(([c, t]) => [c, t === from ? to : t])),
+    noForecastTypes: (data.noForecastTypes ?? []).map((t) => (t === from ? to : t)),
     deletedTypes: [...new Set([...(data.deletedTypes ?? []).filter((t) => t !== to), from])],
   };
 }

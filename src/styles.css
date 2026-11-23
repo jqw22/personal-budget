@@ -517,6 +517,16 @@ table.categories td {
   vertical-align: middle;
 }
 
+label.forecast-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+label.forecast-toggle input {
+  accent-color: var(--accent);
+}
+
 table.types td.order {
   white-space: nowrap;
 }

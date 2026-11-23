@@ -1,7 +1,7 @@
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import { formatPounds } from '../lib/format';
 import { categoryHistory, closingBalances, forecastFrom, groupSpending, UNTAGGED } from '../lib/summary';
-import type { BudgetData } from '../lib/types';
+import { unforecastCategories, type BudgetData } from '../lib/types';
 import { BalanceChart, type ChartColumn } from './BalanceChart';
 import { MoneyInput, net, shortMonth } from './forecastParts';
 import { expandSplits } from '../lib/splits';
@@ -58,7 +58,7 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
   // Split transactions count as their parts; `data` itself is only ever saved back unchanged.
   const transactions = expandSplits(data.transactions);
   const history = month ? categoryHistory(transactions, month, count) : null;
-  const fc = forecastFrom(transactions, saved, opening, data.categories);
+  const fc = forecastFrom(transactions, saved, opening, data.categories, undefined, unforecastCategories(data, data.categories));
   const actualMonths = history?.months ?? [];
   const withData = new Set(transactions.map((t) => t.date.slice(0, 7)));
   const ytdHistory = averageTo ? categoryHistory(transactions, averageTo, 1) : null;

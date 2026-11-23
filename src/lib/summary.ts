@@ -201,7 +201,7 @@ export function partMonth(transactions: Transaction[]): string | null {
  * below zero, and the averages leave the part month out. Spending
  * `categories` with nothing spent yet get a row too, so a figure can be typed
  * in for them. Closing balances build on the actual balance after the latest
- * transaction.
+ * transaction. Categories in `unforecast` start at zero instead of their average.
  */
 export function forecastFrom(
   transactions: Transaction[],
@@ -209,6 +209,7 @@ export function forecastFrom(
   opening: number | null,
   categories: string[] = [],
   count = FORECAST_MONTHS,
+  unforecast: string[] = [],
 ): Forecast {
   const first = monthsWithData(transactions)[0];
   const latest = monthsWithData(transactions).at(-1);
@@ -233,7 +234,8 @@ export function forecastFrom(
   const rows = rowCategories.map((category) => {
     const ytd = history.rows.find((r) => r.category === category)?.ytd ?? 0;
     const soFar = actual.rows.find((r) => r.category === category)?.amounts[0] ?? 0;
-    return { category, amounts: months.map((m) => amount(m, category, ytd, soFar)) };
+    const off = unforecast.includes(category);
+    return { category, amounts: months.map((m) => (off ? (figures[m]?.[category] ?? 0) : amount(m, category, ytd, soFar))) };
   });
   const totals = months.map((_, i) => rows.reduce((total, r) => total + r.amounts[i], 0));
   const closing: number[] = [];
@@ -296,11 +298,12 @@ export function dailyForecast(
   from: { date: string; balance: number },
   to: string,
   categories: string[] = [],
+  unforecast: string[] = [],
 ): { date: string; balance: number }[] {
   const fromMonth = from.date.slice(0, 7);
   let count = 0;
   for (let m = nextMonth(fromMonth); m <= to.slice(0, 7); m = nextMonth(m)) count++;
-  const forecast = forecastFrom(transactions, figures, null, categories, count);
+  const forecast = forecastFrom(transactions, figures, null, categories, count, unforecast);
   const spending = new Map(forecast.months.map((m, i) => [m, forecast.totals[i]]));
   const income = new Map(forecast.months.map((m, i) => [m, forecast.income[i]]));
   const transfers = new Map(forecast.months.map((m, i) => [m, forecast.transfers[i]]));

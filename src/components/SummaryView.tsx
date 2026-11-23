@@ -13,7 +13,7 @@ import {
   UNTAGGED,
 } from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
-import type { BudgetData } from '../lib/types';
+import { unforecastCategories, type BudgetData } from '../lib/types';
 import { CombinedTable } from './CombinedTable';
 import { expandSplits } from '../lib/splits';
 
@@ -69,7 +69,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const chartEnd = lastDayOf(chartLast);
   const days = opening === null ? [] : dailyBalances(transactions, opening, `${chartStart}-01`, chartEnd);
   const lastActual = days.at(-1);
-  const forecast = lastActual ? dailyForecast(transactions, data.forecast, lastActual, chartEnd, data.categories) : [];
+  const forecast = lastActual ? dailyForecast(transactions, data.forecast, lastActual, chartEnd, data.categories, unforecastCategories(data, data.categories)) : [];
 
   return (
     <section>
