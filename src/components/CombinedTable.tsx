@@ -248,7 +248,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
             {budgetCell(INCOME)}
             <td className="num diff-col">{formatPounds(budget(INCOME) - ytd.income)}</td>
           </tr>
-          {/* Moves the balance but isn't income or spending, so it's left out of the under / over spend. */}
+          {/* Moves the balance but isn't income or spending; it counts in the Total row and in Income - spend. */}
           <tr className="transfers-row">
             <td>
               <button className="link name" title="See Transfers transactions" onClick={() => onShowTransactions(month, 'Transfers')}>
@@ -364,7 +364,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
           <tr className="net-row">
             <th>Income - spend</th>
             {actualMonths.map((m, i) => {
-              const amount = history!.income[i] - history!.totals[i];
+              const amount = history!.income[i] + history!.transfers[i] - history!.totals[i];
               return (
                 <th key={m} className={`num ${!withData.has(m) ? '' : amount >= 0 ? 'down' : 'up'}`}>
                   {withData.has(m) ? net(amount) : '–'}
@@ -372,7 +372,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
               );
             })}
             {fc.totals.map((t, i) => {
-              const amount = fc.income[i] - t;
+              const amount = fc.income[i] + fc.transfers[i] - t;
               return (
                 <th key={`f${fc.months[i]}`} className={`num fc ${i === 0 ? 'fc-start' : ''} ${amount >= 0 ? 'down' : 'up'}`}>
                   {net(amount)}
@@ -380,19 +380,19 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
               );
             })}
             {(() => {
-              const amount = (ytd.income) - (ytd.total);
+              const amount = ytd.income + ytd.transfers - ytd.total;
               return <th className={`num ytd-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
             {(() => {
-              const amount = average(ytd.income) - average(ytd.total);
+              const amount = average(ytd.income + ytd.transfers) - average(ytd.total);
               return <th className={`num avg-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
             {(() => {
-              const amount = budget(INCOME) - budgetSpending;
+              const amount = budget(INCOME) + budget(TRANSFERS) - budgetSpending;
               return <th className={`num budget-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
             {(() => {
-              const amount = budget(INCOME) - budgetSpending - (ytd.income - ytd.total);
+              const amount = budget(INCOME) + budget(TRANSFERS) - budgetSpending - (ytd.income + ytd.transfers - ytd.total);
               return <th className={`num diff-col ${amount >= 0 ? 'down' : 'up'}`}>{net(amount)}</th>;
             })()}
           </tr>
