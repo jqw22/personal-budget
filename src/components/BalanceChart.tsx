@@ -22,8 +22,6 @@ interface Props {
 const HEIGHT = 240;
 const PAD = { top: 12, bottom: 24 };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** A balance worth keeping above, drawn as a reference line. */
-const THRESHOLD = 50000;
 
 /** Round, evenly spaced values covering `min` to `max`, for the y axis. */
 function ticks(min: number, max: number): number[] {
@@ -54,7 +52,7 @@ export function BalanceChart({ columns, width, days, forecast = [] }: Props) {
   const points = [...actual, ...ahead];
   if (points.length === 0) return null;
   const balances = points.map((d) => d.balance);
-  const yTicks = ticks(Math.min(0, ...balances), Math.max(THRESHOLD, ...balances));
+  const yTicks = ticks(Math.min(0, ...balances), Math.max(0, ...balances));
   const [yMin, yMax] = [yTicks[0], yTicks.at(-1)!];
   const plotLeft = columns[0].left;
   const plotRight = columns.at(-1)!.left + columns.at(-1)!.width;
@@ -107,10 +105,6 @@ export function BalanceChart({ columns, width, days, forecast = [] }: Props) {
               </g>
             );
           })}
-          <line className="threshold" x1={plotLeft} x2={plotRight} y1={y(THRESHOLD)} y2={y(THRESHOLD)} />
-          <text className="threshold-label" x={plotRight - 4} y={y(THRESHOLD) - 4} textAnchor="end">
-            {formatPounds(THRESHOLD)}
-          </text>
           <path className="line" d={line(actual)} />
           {/* Joined to the last actual day so the two lines meet. */}
           {ahead.length > 0 && <path className="line forecast" d={line(actual.length ? [actual[actual.length - 1], ...ahead] : ahead)} />}
