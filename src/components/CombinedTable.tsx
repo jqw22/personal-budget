@@ -254,6 +254,18 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
             <td className="num ytd-col">{formatPounds(ytd.transfers)}</td>
             <td className="num avg-col">{formatPounds(average(ytd.transfers))}</td>
           </tr>
+          <tr className="subtotal income-total">
+            <th>Total income</th>
+            <th className="num budget-col">{formatPounds(budget(INCOME) + budget(TRANSFERS))}</th>
+            {actualMonths.map((m, i) => actualCell(m, history!.income[i] + history!.transfers[i], 'th'))}
+            {fc.months.map((m, i) => (
+              <th key={`f${m}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
+                {formatPounds(fc.income[i] + fc.transfers[i])}
+              </th>
+            ))}
+            <th className="num ytd-col">{formatPounds(ytd.income + ytd.transfers)}</th>
+            <th className="num avg-col">{formatPounds(average(ytd.income + ytd.transfers))}</th>
+          </tr>
           {groups.map((group) => (
             <Fragment key={group.label ?? UNTAGGED}>
               {group.label && (
