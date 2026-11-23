@@ -110,7 +110,7 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
   const totalOf = (list: typeof rows, pick: (r: (typeof rows)[number]) => number) => list.reduce((t, r) => t + pick(r), 0);
 
   return (
-    <div className="table-wrap">
+    <div className="table-wrap summary-wrap">
       <table className="summary combined" ref={table}>
         <colgroup>
           <col className="category-col" />

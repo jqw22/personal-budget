@@ -965,3 +965,34 @@ table.summary.combined tr.gap-row td {
   border: none;
   background: var(--surface);
 }
+
+/*
+ * The two heading rows stay in view while the table scrolls down. Sticking needs the table's own
+ * box to do the scrolling, so it scrolls inside a box no taller than the window.
+ */
+.table-wrap.summary-wrap {
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+}
+
+/* Separate borders, so the stuck heading rows paint over everything scrolled beneath them. */
+table.summary.combined {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table.summary.combined thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+table.summary.combined thead th {
+  background: var(--surface);
+}
+
+/* Where frozen columns meet the frozen rows, the cells sit above both. */
+table.summary.combined thead tr > :first-child,
+table.summary.combined thead :is(th.ytd-col, th.avg-col) {
+  z-index: 3;
+}
