@@ -110,7 +110,9 @@ export function latestByTag(events: Event[]): Map<string, Event> {
 /** Keeps whichever copy carries more of the user's own work: a split beats a hand-picked category, which beats a rule's. */
 function pick(local: Transaction, remote: Transaction): Transaction {
   const rank = (t: Transaction) => (t.splits?.length ? 3 : t.categorySource === 'manual' ? 2 : t.category ? 1 : 0);
-  return rank(remote) > rank(local) ? remote : local;
+  const [kept, other] = rank(remote) > rank(local) ? [remote, local] : [local, remote];
+  // A note written on either device survives whichever copy's category wins.
+  return kept.note === undefined && other.note !== undefined ? { ...kept, note: other.note } : kept;
 }
 
 function isUntouched(data: BudgetData): boolean {

@@ -18,6 +18,8 @@ export interface Transaction {
    * to `amount` exactly and share its sign; the imported fields above are never changed by a split.
    */
   splits?: Split[];
+  /** The user's own note. The imported description is never changed, so duplicates and rules still match. */
+  note?: string;
 }
 
 export interface Split {

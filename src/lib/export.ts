@@ -41,7 +41,7 @@ export function runningBalances(transactions: Transaction[], opening: number): M
 export function toCsv(transactions: Transaction[], balances?: Map<string, number>): string {
   const balanceOf = (t: Transaction) => (balances ? (balances.get(t.id) ?? null) : t.balance);
   const withBalance = transactions.some((t) => balanceOf(t) !== null);
-  const rows = [['Date', 'Description', 'Money in', 'Money out', ...(withBalance ? ['Balance'] : []), 'Merchant', 'Category', 'Id']];
+  const rows = [['Date', 'Description', 'Money in', 'Money out', ...(withBalance ? ['Balance'] : []), 'Merchant', 'Category', 'Note', 'Id']];
   for (const t of transactions) {
     const balance = balanceOf(t);
     rows.push([
@@ -52,6 +52,7 @@ export function toCsv(transactions: Transaction[], balances?: Map<string, number
       ...(withBalance ? [balance === null ? '' : pounds(balance)] : []),
       t.merchant,
       t.splits?.length ? `Split: ${t.splits.map((p) => `${p.category} £${pounds(Math.abs(p.amount))}`).join('; ')}` : (t.category ?? ''),
+      t.note ?? '',
       t.id,
     ]);
   }

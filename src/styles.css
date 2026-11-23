@@ -883,3 +883,45 @@ table.transactions tr.split-row td {
 .split-editor .split-actions {
   flex-basis: 100%;
 }
+
+.split-editor button.split-add {
+  margin-right: 12px;
+}
+
+/* The user's own note on a transaction, under the bank's description. */
+button.link.note,
+button.link.note-add {
+  display: block;
+  margin-top: 2px;
+  padding: 0;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+button.link.note {
+  font-style: italic;
+}
+
+button.link.note-add {
+  color: var(--muted);
+  opacity: 0;
+}
+
+tr:hover button.link.note-add,
+button.link.note-add:focus-visible {
+  opacity: 1;
+}
+
+/* Phones can't hover, so show it there. */
+@media (hover: none) {
+  button.link.note-add {
+    opacity: 1;
+  }
+}
+
+input.note-input {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  font-size: 0.85rem;
+}

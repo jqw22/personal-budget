@@ -13,9 +13,9 @@ describe('toCsv', () => {
 
   it('writes money in and out as pounds and quotes awkward text', () => {
     expect(csv.split('\r\n')).toEqual([
-      'Date,Description,Money in,Money out,Merchant,Category,Id',
-      '2026-06-01,"TESCO, ""EXPRESS""",,12.34,TESCO,Living/Food,a',
-      '2026-06-01,SALARY,2000.00,,SALARY,,b',
+      'Date,Description,Money in,Money out,Merchant,Category,Note,Id',
+      '2026-06-01,"TESCO, ""EXPRESS""",,12.34,TESCO,Living/Food,,a',
+      '2026-06-01,SALARY,2000.00,,SALARY,,,b',
       '',
     ]);
   });
@@ -39,8 +39,8 @@ describe('toCsv', () => {
 
   it('writes a balance worked out from the opening balance on every row', () => {
     const rows = toCsv(transactions, runningBalances(transactions, 10000)).split('\r\n');
-    expect(rows[0]).toBe('Date,Description,Money in,Money out,Balance,Merchant,Category,Id');
-    expect(rows.slice(1, 3).map((r) => r.split(',').at(-4))).toEqual(['87.66', '2087.66']);
+    expect(rows[0]).toBe('Date,Description,Money in,Money out,Balance,Merchant,Category,Note,Id');
+    expect(rows.slice(1, 3).map((r) => r.split(',').at(-5))).toEqual(['87.66', '2087.66']);
   });
 
   it('gives back the same transactions when imported again, even without a bank balance', () => {

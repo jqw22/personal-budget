@@ -4,7 +4,7 @@ import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, upsertRule } from '../lib/rules';
 import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
 import { parseMoney } from '../lib/importer';
-import { amountIn, isTagged, splitProblem, withSplit } from '../lib/splits';
+import { amountIn, isTagged, MAX_PARTS, splitProblem, withSplit } from '../lib/splits';
 import { sortedCategories } from '../lib/store';
 import type { BudgetData, Split, Transaction } from '../lib/types';
 
@@ -41,6 +41,8 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const [sort, setSort] = useState<Sort>('date');
   /** The transaction whose split is being edited. */
   const [splitting, setSplitting] = useState<string | null>(null);
+  /** The transaction whose note is being written, and the text so far. */
+  const [noting, setNoting] = useState<{ id: string; text: string } | null>(null);
 
   const shown = data.transactions
     .filter((t) => month === 'all' || t.date.startsWith(month))
@@ -49,7 +51,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
         category === 'all' ||
         (category === UNTAGGED_FILTER ? !isTagged(t) : t.category === category || t.splits?.some((p) => p.category === category)),
     )
-    .filter((t) => !search || t.description.toLowerCase().includes(search.toLowerCase()))
+    .filter((t) => !search || `${t.description}\n${t.note ?? ''}`.toLowerCase().includes(search.toLowerCase()))
     .slice()
     .reverse();
   if (sort !== 'date') shown.sort((a, b) => (sort === 'amount-out' ? a.amount - b.amount : b.amount - a.amount));
@@ -79,6 +81,18 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
     // Without its split, the transaction goes back to the rules like any untagged one.
     onChange({ ...data, transactions: parts ? transactions : applyRules(transactions, data.rules) });
     setSplitting(null);
+  }
+
+  function saveNote() {
+    if (!noting) return;
+    const text = noting.text.trim();
+    const transactions = data.transactions.map((x) => {
+      if (x.id !== noting.id) return x;
+      const { note: _, ...rest } = x;
+      return text ? { ...rest, note: text } : rest;
+    });
+    onChange({ ...data, transactions });
+    setNoting(null);
   }
 
   if (data.transactions.length === 0) {
@@ -122,7 +136,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
             </option>
           ))}
         </select>
-        <input type="search" placeholder="Search descriptions" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input type="search" placeholder="Search descriptions and notes" value={search} onChange={(e) => setSearch(e.target.value)} />
         <label title="When you tag a transaction, tag every other transaction from the same place the same way">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           Remember for this merchant
@@ -184,6 +198,29 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                   <td title={t.description}>
                     {t.merchant}
                     <div className="sub">{t.description}</div>
+                    {noting?.id === t.id ? (
+                      <input
+                        className="note-input"
+                        autoFocus
+                        aria-label={`Note on ${t.merchant}`}
+                        placeholder="Add a note"
+                        value={noting.text}
+                        onChange={(e) => setNoting({ id: t.id, text: e.target.value })}
+                        onBlur={saveNote}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveNote();
+                          if (e.key === 'Escape') setNoting(null);
+                        }}
+                      />
+                    ) : t.note ? (
+                      <button className="link note" title="Change this note" onClick={() => setNoting({ id: t.id, text: t.note ?? '' })}>
+                        {t.note}
+                      </button>
+                    ) : (
+                      <button className="link note-add" onClick={() => setNoting({ id: t.id, text: '' })}>
+                        + Note
+                      </button>
+                    )}
                   </td>
                   <td className={`num ${t.amount > 0 ? 'in' : ''}`}>{formatMoney(t.amount)}</td>
                   <td>
@@ -208,7 +245,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                     {t.categorySource === 'rule' && <span className="hint" title="Tagged by a merchant rule">auto</span>}
                     <button
                       className="link split-button"
-                      title={t.splits?.length ? 'Change or remove this split' : 'Split into two parts with different categories'}
+                      title={t.splits?.length ? 'Change or remove this split' : 'Split into parts with different categories'}
                       onClick={() => setSplitting(splitting === t.id ? null : t.id)}
                     >
                       {t.splits?.length ? 'Edit split' : 'Split'}
@@ -233,8 +270,8 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
 }
 
 /**
- * Splits one transaction into two parts with their own categories. The first part's amount is
- * typed in and the second is whatever is left, so the two always add up to the whole.
+ * Splits one transaction into up to eight parts with their own categories. Every part's amount but
+ * the last is typed in, and the last is whatever is left, so the parts always add up to the whole.
  */
 function SplitEditor({
   t,
@@ -249,49 +286,77 @@ function SplitEditor({
 }) {
   const sign = Math.sign(t.amount) || -1;
   const whole = Math.abs(t.amount);
-  const [first, setFirst] = useState(t.splits ? (Math.abs(t.splits[0].amount) / 100).toFixed(2) : '');
-  const [firstCategory, setFirstCategory] = useState(t.splits?.[0].category ?? t.category ?? '');
-  const [secondCategory, setSecondCategory] = useState(t.splits?.[1]?.category ?? '');
-  const typed = parseMoney(first);
-  const firstPence = typed === null ? null : Math.abs(typed);
-  const parts: Split[] | null =
-    firstPence === null ? null : [
-      { amount: sign * firstPence, category: firstCategory },
-      { amount: sign * (whole - firstPence), category: secondCategory },
-    ];
-  const problem = parts ? splitProblem(t, parts) : first.trim() ? 'Type an amount for the first part.' : null;
-  const pick = (value: string, set: (v: string) => void, label: string) => (
-    <select value={value} onChange={(e) => set(e.target.value)} aria-label={label}>
-      <option value="">Choose…</option>
-      {categories.map((c) => (
-        <option key={c} value={c}>
-          {c}
-        </option>
-      ))}
-    </select>
+  const [rows, setRows] = useState<{ amount: string; category: string }[]>(() =>
+    t.splits?.length
+      ? t.splits.map((p) => ({ amount: (Math.abs(p.amount) / 100).toFixed(2), category: p.category }))
+      : [
+          { amount: '', category: t.category ?? '' },
+          { amount: '', category: '' },
+        ],
   );
+  const typed = rows.slice(0, -1).map((r) => {
+    const pence = parseMoney(r.amount);
+    return pence === null ? null : Math.abs(pence);
+  });
+  const allTyped = typed.every((p) => p !== null);
+  const rest = allTyped ? whole - typed.reduce<number>((total, p) => total + (p ?? 0), 0) : null;
+  const parts: Split[] | null = allTyped
+    ? rows.map((r, i) => ({ amount: sign * (i < rows.length - 1 ? typed[i]! : rest!), category: r.category }))
+    : null;
+  const problem = parts
+    ? splitProblem(t, parts)
+    : rows.slice(0, -1).some((r) => r.amount.trim())
+      ? 'Type an amount for each part but the last.'
+      : null;
+  const update = (i: number, change: Partial<{ amount: string; category: string }>) =>
+    setRows(rows.map((r, j) => (j === i ? { ...r, ...change } : r)));
 
   return (
     <div className="split-editor">
-      <div>
-        <input
-          className="forecast-input"
-          inputMode="decimal"
-          aria-label="First part"
-          placeholder="0.00"
-          value={first}
-          autoFocus
-          onChange={(e) => setFirst(e.target.value)}
-        />
-        {pick(firstCategory, setFirstCategory, 'First part category')}
-      </div>
-      <div>
-        <span className="split-rest">{firstPence === null || firstPence > whole ? '–' : formatMoney(sign * (whole - firstPence))}</span>
-        {pick(secondCategory, setSecondCategory, 'Second part category')}
-      </div>
+      {rows.map((r, i) => (
+        <div key={i}>
+          {i < rows.length - 1 ? (
+            <input
+              className="forecast-input"
+              inputMode="decimal"
+              aria-label={`Part ${i + 1}`}
+              placeholder="0.00"
+              value={r.amount}
+              autoFocus={i === 0}
+              onChange={(e) => update(i, { amount: e.target.value })}
+            />
+          ) : (
+            <span className="split-rest" title="Whatever is left">
+              {rest === null || rest < 0 ? '–' : formatMoney(sign * rest)}
+            </span>
+          )}
+          <select value={r.category} onChange={(e) => update(i, { category: e.target.value })} aria-label={`Part ${i + 1} category`}>
+            <option value="">Choose…</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {rows.length > 2 && (
+            <button className="link" title={`Remove part ${i + 1}`} onClick={() => setRows(rows.filter((_, j) => j !== i))}>
+              ×
+            </button>
+          )}
+        </div>
+      ))}
       <div className="split-actions">
+        {rows.length < MAX_PARTS && (
+          <button
+            className="link split-add"
+            // The new part goes before the last, which keeps taking whatever is left.
+            onClick={() => setRows([...rows.slice(0, -1), { amount: '', category: '' }, rows[rows.length - 1]])}
+          >
+            + Add part
+          </button>
+        )}
         <span className="muted small">
-          {problem ?? (parts ? `Adds up to ${formatMoney(t.amount)}.` : `Split ${formatMoney(t.amount)} into two parts.`)}
+          {problem ?? (parts ? `Adds up to ${formatMoney(t.amount)}.` : `Split ${formatMoney(t.amount)} into up to ${MAX_PARTS} parts.`)}
         </span>
         <button className="primary" disabled={!parts || problem !== null} onClick={() => parts && onSave(parts)}>
           Save split

@@ -124,6 +124,17 @@ describe('forecast sync', () => {
   });
 });
 
+describe('transaction notes', () => {
+  it('keep a note from either device when combining copies', () => {
+    const plain = tx('a', '2026-05-01');
+    const local = data([{ ...plain, category: 'Holidays', categorySource: 'manual' }]);
+    const remote = data([{ ...plain, note: 'Flights to Rome' }]);
+    const merged = mergeData(local, remote).transactions[0];
+    expect(merged.category).toBe('Holidays');
+    expect(merged.note).toBe('Flights to Rome');
+  });
+});
+
 describe('category type sync', () => {
   it('round-trips types and keeps this device\'s type for a category where both set one', () => {
     const saved = data([tx('a', '2026-05-01')], { types: ['Essential', 'Fun'], categoryTypes: { 'Living/Food': 'Essential', 'Going Out': 'Fun' } });
