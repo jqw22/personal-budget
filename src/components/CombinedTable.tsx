@@ -260,6 +260,9 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
               </th>
             ))}
           </tr>
+          <tr className="gap-row" aria-hidden="true">
+            <td colSpan={span} />
+          </tr>
           <tr className="net-row">
             <th>Under / over spend</th>
             {(() => {

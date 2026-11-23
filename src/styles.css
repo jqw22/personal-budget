@@ -955,3 +955,11 @@ input.note-input {
   margin-top: 2px;
   font-size: 0.85rem;
 }
+
+/* A blank row between total spending and the under / over spend. */
+table.summary.combined tr.gap-row td {
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: var(--surface);
+}
