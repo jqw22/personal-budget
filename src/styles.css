@@ -12,6 +12,7 @@
   --untagged: #fffaf0;
   --edited: #e6e6e1;
   --avg: #eeeeea;
+  --forecast: #fdf0f2;
   --danger: #b3261e;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
@@ -33,6 +34,7 @@
     --untagged: #24221b;
     --edited: #3a3a35;
     --avg: #2a2a27;
+    --forecast: #33252a;
     --danger: #f2867e;
   }
 }
@@ -721,7 +723,7 @@ form.reply textarea {
   margin-top: 0;
 }
 
-/* One table: actual months, their average, then the forecast. */
+/* One table: actual months, the forecast, then the average. */
 table.summary.combined {
   min-width: 860px;
 }
@@ -741,6 +743,10 @@ table.summary.combined .avg-col {
 
 table.summary.combined .fc-start {
   border-left: 2px solid var(--border);
+}
+
+table.summary.combined .fc {
+  background: var(--forecast);
 }
 
 table.summary.combined thead th {
