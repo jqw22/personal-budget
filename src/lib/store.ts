@@ -1,6 +1,6 @@
 import { STORAGE_PREFIX } from './env';
 import { applyRules } from './rules';
-import { DEFAULT_CATEGORIES, type BudgetData, type Transaction } from './types';
+import { DEFAULT_CATEGORIES, type BudgetData, type CategoryType, type Transaction } from './types';
 
 const VERSION = 3;
 
@@ -45,6 +45,7 @@ export function renameCategory(data: BudgetData, from: string, to: string): Budg
     categories: [...new Set(data.categories.map(rename))],
     deletedCategories: forgetDeleted([...(data.deletedCategories ?? []), from], to),
     ...(data.essential ? { essential: [...new Set(data.essential.map(rename))] } : {}),
+    ...(data.living ? { living: [...new Set(data.living.map(rename))] } : {}),
     ...(forecast ? { forecast } : {}),
     rules: data.rules.map((r) => ({ ...r, category: rename(r.category) })),
     transactions: data.transactions.map((t) => {
@@ -58,6 +59,17 @@ export function renameCategory(data: BudgetData, from: string, to: string): Budg
 
 export function isEssential(data: BudgetData, category: string): boolean {
   return data.essential?.includes(category) ?? false;
+}
+
+/** Moves a category to one type, taking it out of the others. */
+export function setCategoryType(data: BudgetData, category: string, type: CategoryType): BudgetData {
+  const essential = (data.essential ?? []).filter((c) => c !== category);
+  const living = (data.living ?? []).filter((c) => c !== category);
+  return {
+    ...data,
+    essential: type === 'essential' ? [...essential, category] : essential,
+    living: type === 'living' ? [...living, category] : living,
+  };
 }
 
 /** Upgrades data saved by an older version of the app. */

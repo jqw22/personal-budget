@@ -66,10 +66,11 @@ describe('closingBalances', () => {
 });
 
 describe('groupSpending', () => {
-  it('puts essential rows first, then discretionary, then untagged', () => {
-    const rows = [{ category: 'Going Out' }, { category: 'Untagged' }, { category: 'Rent & bills' }, { category: 'Holidays' }];
-    expect(groupSpending(rows, ['Rent & bills']).map((g) => [g.label, g.rows.map((r) => r.category)])).toEqual([
+  it('puts essential rows first, then living, then discretionary, each A to Z, then untagged', () => {
+    const rows = [{ category: 'Holidays' }, { category: 'Untagged' }, { category: 'Rent & bills' }, { category: 'Living/Food' }, { category: 'Going Out' }];
+    expect(groupSpending(rows, { essential: ['Rent & bills'], living: ['Living/Food'] }).map((g) => [g.label, g.rows.map((r) => r.category)])).toEqual([
       ['Essential', ['Rent & bills']],
+      ['Living', ['Living/Food']],
       ['Discretionary', ['Going Out', 'Holidays']],
       [null, ['Untagged']],
     ]);

@@ -2,7 +2,7 @@ import { ClaudeError, FALLBACK_BETA, MODEL, poundsAndPence, replyText, withClaud
 import { expandSplits } from './splits';
 import { impliedOpeningBalance } from './export';
 import { categoryHistory, closingBalances, forecastFrom, monthsWithData, UNTAGGED } from './summary';
-import type { BudgetData } from './types';
+import { categoryType, type BudgetData } from './types';
 
 /** How many months of actual figures Claude is shown, ending at the latest. */
 const MONTHS_REVIEWED = 6;
@@ -25,12 +25,11 @@ export function reviewData(budget: BudgetData, today: string) {
   if (!latest) return null;
   const withData = new Set(months);
   const history = categoryHistory(data.transactions, latest, MONTHS_REVIEWED);
-  const essential = data.essential ?? [];
   const opening = impliedOpeningBalance(data.transactions);
   const closing = opening === null ? null : closingBalances(data.transactions, opening, history.months);
   const forecast = forecastFrom(data.transactions, data.forecast, opening, data.categories);
   const typeOf = (category: string) =>
-    category === UNTAGGED ? 'untagged' : essential.includes(category) ? 'essential' : 'discretionary';
+    category === UNTAGGED ? 'untagged' : categoryType(data, category);
   // Left out of income and spending, but it moves the balance, so Claude needs it to make sense of it.
   const untaggedIn = (month: string) =>
     data.transactions.filter((t) => !t.category && t.amount > 0 && t.date.startsWith(month)).reduce((total, t) => total + t.amount, 0);
@@ -76,7 +75,7 @@ export function reviewData(budget: BudgetData, today: string) {
 
 const SYSTEM = `You review a UK household's monthly budget and help them reach their financial goals. In this app you are called Dad.
 
-You are given monthly totals by category (amounts in whole pounds), closing bank balances, a forecast for the coming months, the user's goals and every transaction from the last three months. Use the transactions to find what to change: name the merchants, subscriptions and recurring payments, and tell one-offs from habits. Categories are essential, discretionary or untagged. Transfers between their own accounts are left out, and so is untagged money coming in (untaggedMoneyIn), though both move the balance. The forecast builds on the actual balance after the latest transaction. If the latest month is incomplete, its forecast entry (marked restOfMonthOnly) covers only what is still to come in and go out this month. Each category uses its monthly average this year, less what has gone so far for the rest of a month, unless the user typed in their own figure (listed in setByUser). The latest month may be incomplete: compare its dates with today and don't treat a part month as a drop in spending.
+You are given monthly totals by category (amounts in whole pounds), closing bank balances, a forecast for the coming months, the user's goals and every transaction from the last three months. Use the transactions to find what to change: name the merchants, subscriptions and recurring payments, and tell one-offs from habits. Categories are essential, living, discretionary or untagged. Transfers between their own accounts are left out, and so is untagged money coming in (untaggedMoneyIn), though both move the balance. The forecast builds on the actual balance after the latest transaction. If the latest month is incomplete, its forecast entry (marked restOfMonthOnly) covers only what is still to come in and go out this month. Each category uses its monthly average this year, less what has gone so far for the rest of a month, unless the user typed in their own figure (listed in setByUser). The latest month may be incomplete: compare its dates with today and don't treat a part month as a drop in spending.
 
 Write in plain British English, speaking to the user as "you". Comment only on their goals and what to change. Don't describe what changed from month to month or how spending is trending, except as a brief reason for a suggestion. Use these two Markdown sections, each with a "## " heading:
 

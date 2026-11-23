@@ -53,8 +53,10 @@ export interface BudgetData {
   transactions: Transaction[];
   rules: Rule[];
   categories: string[];
-  /** Spending categories that are essential. Every other spending category is discretionary. */
+  /** Spending categories that are essential. */
   essential?: string[];
+  /** Spending categories that are living costs. Every spending category in neither list is discretionary. */
+  living?: string[];
   /**
    * Forecast amounts typed in by the user, in pence, by month ("2026-07") then
    * row ("Income" or a spending category). Rows left out use the monthly average.
@@ -92,3 +94,16 @@ export const DEFAULT_CATEGORIES = [
   'Income',
   'Other',
 ];
+
+export type CategoryType = 'essential' | 'living' | 'discretionary';
+
+/** Spending types in the order the summary shows them. */
+export const CATEGORY_TYPES: { type: CategoryType; label: string }[] = [
+  { type: 'essential', label: 'Essential' },
+  { type: 'living', label: 'Living' },
+  { type: 'discretionary', label: 'Discretionary' },
+];
+
+export function categoryType(data: Pick<BudgetData, 'essential' | 'living'>, category: string): CategoryType {
+  return data.essential?.includes(category) ? 'essential' : data.living?.includes(category) ? 'living' : 'discretionary';
+}

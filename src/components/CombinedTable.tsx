@@ -86,7 +86,7 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
       forecast: fc.rows.find((r) => r.category === category)?.amounts ?? null,
     };
   });
-  const groups = groupSpending(rows, data.essential ?? []);
+  const groups = groupSpending(rows, data);
   const span = 1 + actualMonths.length + 1 + fc.months.length;
   const label = colMonth;
   /** A figure for a month; given a row to open, clicking it shows the transactions behind it. */

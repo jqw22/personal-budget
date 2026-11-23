@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
-import { emptyData, isEssential, renameCategory, sortedCategories, forgetDeleted } from '../lib/store';
+import { emptyData, renameCategory, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
+import { CATEGORY_TYPES, categoryType, type CategoryType } from '../lib/types';
 import { NOT_SPENDING } from '../lib/summary';
 import type { BudgetData, Rule } from '../lib/types';
 
-type CategoryType = 'essential' | 'discretionary';
 
 interface Props {
   data: BudgetData;
@@ -31,10 +31,7 @@ export function RulesView({ data, onChange }: Props) {
     setNewType('');
   }
 
-  function setType(next: BudgetData, name: string, type: CategoryType): BudgetData {
-    const others = (next.essential ?? []).filter((c) => c !== name);
-    return { ...next, essential: type === 'essential' ? [...others, name] : others };
-  }
+  const setType = setCategoryType;
 
   function finishRename() {
     if (!editing) return;
@@ -58,12 +55,15 @@ export function RulesView({ data, onChange }: Props) {
       categories: data.categories.filter((c) => c !== name),
       deletedCategories: [...new Set([...(data.deletedCategories ?? []), name])],
       essential: (data.essential ?? []).filter((c) => c !== name),
+      living: (data.living ?? []).filter((c) => c !== name),
       rules,
       transactions: applyRules(transactions, rules),
     });
   }
 
-  const categories = sortedCategories(data.categories);
+  // Income and Transfers aren't spending, so they stay at the top; the rest are A to Z below them.
+  const sorted = sortedCategories(data.categories);
+  const categories = [...sorted.filter((c) => NOT_SPENDING.includes(c)), ...sorted.filter((c) => !NOT_SPENDING.includes(c))];
   const counts = new Map<string, number>();
   for (const t of expandSplits(data.transactions)) if (t.category) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
   const rulesFor = (c: string) => data.rules.filter((r) => r.category === c).length;
@@ -111,11 +111,14 @@ export function RulesView({ data, onChange }: Props) {
                 ) : (
                   <select
                     aria-label={`Type of ${c}`}
-                    value={isEssential(data, c) ? 'essential' : 'discretionary'}
+                    value={categoryType(data, c)}
                     onChange={(e) => onChange(setType(data, c, e.target.value as CategoryType))}
                   >
-                    <option value="essential">Essential</option>
-                    <option value="discretionary">Discretionary</option>
+                    {CATEGORY_TYPES.map(({ type, label }) => (
+                      <option key={type} value={type}>
+                        {label}
+                      </option>
+                    ))}
                   </select>
                 )}
               </td>
@@ -167,8 +170,11 @@ export function RulesView({ data, onChange }: Props) {
           <option value="" disabled>
             Type…
           </option>
-          <option value="essential">Essential</option>
-          <option value="discretionary">Discretionary</option>
+          {CATEGORY_TYPES.map(({ type, label }) => (
+            <option key={type} value={type}>
+              {label}
+            </option>
+          ))}
         </select>
         <button type="submit" disabled={!newCategory.trim() || !newType}>
           Add

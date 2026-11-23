@@ -17,7 +17,7 @@ const SETTINGS = `${PREFIX}settings`;
 const PART_BYTES = 20000;
 
 function settingsJson(data: BudgetData): string {
-  return JSON.stringify({ version: data.version, categories: data.categories, essential: data.essential, rules: data.rules, forecast: data.forecast, openingBalance: data.openingBalance, goals: data.goals, anthropicKey: data.anthropicKey, insight: data.insight, deletedCategories: data.deletedCategories });
+  return JSON.stringify({ version: data.version, categories: data.categories, essential: data.essential, living: data.living, rules: data.rules, forecast: data.forecast, openingBalance: data.openingBalance, goals: data.goals, anthropicKey: data.anthropicKey, insight: data.insight, deletedCategories: data.deletedCategories });
 }
 
 export function isOurs(d: string): boolean {
@@ -68,13 +68,14 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     transactions.push(...(JSON.parse(plaintext).transactions as Transaction[]));
   }
   if (!settings && transactions.length === 0) return null;
-  const { version, categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight, deletedCategories } = settings
+  const { version, categories, essential, living, rules, forecast, openingBalance, goals, anthropicKey, insight, deletedCategories } = settings
     ? JSON.parse(settings)
     : { version: undefined, categories: [], rules: [] };
   return migrate({
     version,
     categories,
     ...(essential ? { essential } : {}),
+    ...(living ? { living } : {}),
     rules,
     ...(forecast ? { forecast } : {}),
     ...(openingBalance !== undefined ? { openingBalance } : {}),
@@ -132,7 +133,7 @@ function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
   return {
     ...local,
     categories: [...new Set([...local.categories, ...remote.categories])].filter(kept),
-    essential: [...new Set([...(local.essential ?? []), ...(remote.essential ?? [])])].filter(kept),
+    ...mergeTypes(local, remote, kept),
     rules: rules.filter((r) => kept(r.category)),
     deletedCategories: [...deleted],
     forecast: mergeForecast(local.forecast, remote.forecast),
@@ -141,6 +142,14 @@ function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
     anthropicKey: local.anthropicKey ?? remote.anthropicKey,
     insight,
   };
+}
+
+/** Each category's type from this device where it has given it one, otherwise from the other device. */
+function mergeTypes(local: BudgetData, remote: BudgetData, kept: (c: string) => boolean): Pick<BudgetData, 'essential' | 'living'> {
+  const mine = new Set([...(local.essential ?? []), ...(local.living ?? [])]);
+  const pick = (list: 'essential' | 'living') =>
+    [...new Set([...(local[list] ?? []), ...(remote[list] ?? []).filter((c) => !mine.has(c))])].filter(kept);
+  return { essential: pick('essential'), living: pick('living') };
 }
 
 /** Both sides' forecast figures; this device's wins where both set the same month and row. */
@@ -160,7 +169,7 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
   // A device that has never been used only has the starting categories, so it takes the saved ones
   // as they are rather than adding back defaults the user removed or renamed.
   if (isUntouched(local)) return remote;
-  const { categories, essential, rules, forecast, openingBalance, goals, anthropicKey, insight, deletedCategories } = mergeSettings(local, remote);
+  const { categories, essential, living, rules, forecast, openingBalance, goals, anthropicKey, insight, deletedCategories } = mergeSettings(local, remote);
   const byId = new Map(local.transactions.map((t) => [t.id, t]));
   for (const t of remote.transactions) {
     const mine = byId.get(t.id);
@@ -172,6 +181,7 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
     version: Math.max(local.version ?? 1, remote.version ?? 1),
     categories,
     essential,
+    living,
     rules,
     ...(forecast ? { forecast } : {}),
     ...(openingBalance !== undefined ? { openingBalance } : {}),
@@ -208,7 +218,7 @@ export function applyRemote(local: BudgetData, base: Map<string, string>, incomi
     const remote = { ...local, ...JSON.parse(settings) } as BudgetData;
     const unchangedHere = !base.has(SETTINGS) || base.get(SETTINGS) === settingsJson(local);
     next = unchangedHere
-      ? { ...local, categories: remote.categories, essential: remote.essential, rules: remote.rules, forecast: remote.forecast, openingBalance: remote.openingBalance, goals: remote.goals, anthropicKey: remote.anthropicKey, insight: remote.insight, deletedCategories: remote.deletedCategories }
+      ? { ...local, categories: remote.categories, essential: remote.essential, living: remote.living, rules: remote.rules, forecast: remote.forecast, openingBalance: remote.openingBalance, goals: remote.goals, anthropicKey: remote.anthropicKey, insight: remote.insight, deletedCategories: remote.deletedCategories }
       : mergeSettings(local, remote);
   }
 

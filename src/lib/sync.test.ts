@@ -125,6 +125,14 @@ describe('forecast sync', () => {
 });
 
 describe('category type sync', () => {
+  it('round-trips living categories and keeps this device\'s type where both set one', () => {
+    const saved = data([tx('a', '2026-05-01')], { essential: ['Living/Food'], living: ['Going Out'] });
+    expect(fromChunks(toChunks(saved))!.living).toEqual(['Going Out']);
+    const merged = mergeData(data([tx('b', '2026-05-02')], { essential: [], living: ['Living/Food'] }), saved);
+    expect(merged.essential).toEqual([]);
+    expect(merged.living).toEqual(['Living/Food', 'Going Out']);
+  });
+
   it('round-trips and combines essential categories from both devices', () => {
     const saved = data([tx('a', '2026-05-01')], { essential: ['Rent & bills'] });
     expect(fromChunks(toChunks(saved))!.essential).toEqual(['Rent & bills']);
