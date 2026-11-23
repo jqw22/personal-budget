@@ -1,3 +1,4 @@
+import { STORAGE_PREFIX } from './env';
 import { applyRules } from './rules';
 import { DEFAULT_CATEGORIES, type BudgetData, type Transaction } from './types';
 
@@ -12,7 +13,7 @@ const RENAMED_IN_V2: Record<string, string> = {
 };
 
 // This device's copy. When signed in with Nostr, an encrypted copy is also kept on relays (see useSync).
-const KEY = 'personal-budget:v1';
+const KEY = `${STORAGE_PREFIX}v1`;
 
 export function emptyData(): BudgetData {
   return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], essential: [], version: VERSION };

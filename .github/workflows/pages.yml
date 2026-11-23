@@ -1,8 +1,17 @@
 name: Publish to GitHub Pages
 
+# One Pages site holds both copies of the app:
+#   https://jqw22.github.io/personal-budget/      the live app, built from main
+#   https://jqw22.github.io/personal-budget/dev/  the test copy, built from dev
+# Every run rebuilds both, so publishing one never removes the other.
 on:
   push:
     branches: [main]
+  # After CI passes on dev. Runs as main, which GitHub Pages allows to publish.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [dev]
   workflow_dispatch:
 
 permissions:
@@ -16,9 +25,12 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -27,6 +39,26 @@ jobs:
       - run: npm run build
         env:
           GITHUB_PAGES: 'true'
+
+      - id: dev
+        run: |
+          if git ls-remote --exit-code --heads origin dev > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.dev.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          path: dev-src
+      - if: steps.dev.outputs.exists == 'true'
+        working-directory: dev-src
+        run: |
+          npm ci
+          npm run build -- --base=/personal-budget/dev/
+          cp -r dist ../dist/dev
+        env:
+          VITE_TEST_COPY: 'true'
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

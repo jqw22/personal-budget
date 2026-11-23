@@ -1,3 +1,4 @@
+import { STORAGE_PREFIX } from './env';
 import type { Event } from 'nostr-tools';
 import { withSplit } from './splits';
 import { applyRules } from './rules';
@@ -6,7 +7,7 @@ import { DEFAULT_CATEGORIES, type BudgetData, type Rule, type Transaction } from
 
 /** NIP-78 application data: addressable events, one per `d` tag, each replacing the last. */
 export const KIND = 30078;
-const PREFIX = 'personal-budget:';
+const PREFIX = STORAGE_PREFIX;
 const SETTINGS = `${PREFIX}settings`;
 
 /**

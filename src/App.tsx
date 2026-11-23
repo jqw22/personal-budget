@@ -6,6 +6,7 @@ import { InsightsView } from './components/InsightsView';
 import { RulesView } from './components/RulesView';
 import { SummaryView } from './components/SummaryView';
 import { TransactionsView, UNTAGGED_FILTER, type TransactionFilter } from './components/TransactionsView';
+import { IS_TEST_COPY } from './lib/env';
 import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
 import { useSync } from './lib/useSync';
@@ -35,7 +36,9 @@ export function App() {
     <div className="app">
       <header>
         <div>
-          <h1>Personal Budget</h1>
+          <h1>
+            Personal Budget{IS_TEST_COPY && <span className="test-copy">Test copy</span>}
+          </h1>
           <button className={`link sync-status ${sync.state.status}`} onClick={() => openTab('account')}>
             {sync.state.status === 'signed-out' ? 'Not signed in: data is only on this device' : syncLabel(sync.state)}
           </button>
