@@ -297,6 +297,11 @@ form.inline {
   font-size: 0.85rem;
 }
 
+/* The summary shows a whole year of columns, so it may use a wider page. */
+.app.wide {
+  max-width: 1600px;
+}
+
 .month-picker {
   display: flex;
   gap: 6px;
@@ -542,8 +547,10 @@ table.types button:disabled {
   cursor: default;
 }
 
+/* The svg is as wide as the table, so clip the pixel its border would push past it. */
 .balance-chart {
   position: relative;
+  overflow: hidden;
   margin-bottom: 24px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -750,7 +757,7 @@ form.reply textarea {
 
 /* One table: this year so far and its average, then the actual months and the forecast. */
 table.summary.combined {
-  min-width: 1000px;
+  min-width: 1200px;
 }
 
 /* Month columns share whatever is left after the three frozen ones. */

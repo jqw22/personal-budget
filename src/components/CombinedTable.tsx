@@ -12,7 +12,9 @@ interface Props {
   month: string;
   /** How many actual months to show. */
   count: number;
-  /** The latest complete month: the Average column is January of its year up to it, whichever months are shown. */
+  /** How many whole months to forecast after the latest with data (the part month comes on top), or null for none. */
+  forecastCount: number | null;
+  /** The last actual month: YTD and Average are January of its year up to it. */
   averageTo: string;
   opening: number | null;
   onShowTransactions: (month: string, category: string | null) => void;
@@ -32,7 +34,7 @@ function colMonth(m: string): string {
 }
 
 /** This year so far and its monthly average, then the actual months and the forecast, in one table with a row per category. */
-export function CombinedTable({ data, month, count, averageTo, opening, onShowTransactions, onChange, days, forecast }: Props) {
+export function CombinedTable({ data, month, count, forecastCount, averageTo, opening, onShowTransactions, onChange, days, forecast }: Props) {
   const table = useRef<HTMLTableElement>(null);
   const [layout, setLayout] = useState<{ columns: ChartColumn[]; width: number }>({ columns: [], width: 0 });
   // The chart's months sit exactly under the table's month columns, so measure them.
@@ -58,7 +60,10 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
   // Split transactions count as their parts; `data` itself is only ever saved back unchanged.
   const transactions = expandSplits(data.transactions);
   const history = month ? categoryHistory(transactions, month, count) : null;
-  const fc = forecastFrom(transactions, saved, opening, data.categories, undefined, unforecastCategories(data, data.categories), true);
+  const fc =
+    forecastCount === null
+      ? { months: [], restOf: null, income: [], transfers: [], rows: [], totals: [], closing: [] }
+      : forecastFrom(transactions, saved, opening, data.categories, forecastCount, unforecastCategories(data, data.categories), true);
   const actualMonths = history?.months ?? [];
   const withData = new Set(transactions.map((t) => t.date.slice(0, 7)));
   const ytdHistory = averageTo ? categoryHistory(transactions, averageTo, 1) : null;
@@ -129,9 +134,11 @@ export function CombinedTable({ data, month, count, averageTo, opening, onShowTr
             <th className="ytd-col" />
             <th className="avg-col" />
             {actualMonths.length > 0 && <th colSpan={actualMonths.length}>Actual</th>}
-            <th colSpan={fc.months.length} className="fc fc-start">
-              Forecast
-            </th>
+            {fc.months.length > 0 && (
+              <th colSpan={fc.months.length} className="fc fc-start">
+                Forecast
+              </th>
+            )}
           </tr>
           <tr>
             <th>Category</th>

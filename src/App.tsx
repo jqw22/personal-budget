@@ -33,7 +33,7 @@ export function App() {
   const untagged = data.transactions.filter((t) => !isTagged(t)).length;
 
   return (
-    <div className="app">
+    <div className={`app ${tab === 'summary' ? 'wide' : ''}`}>
       <header>
         <div>
           <h1>
