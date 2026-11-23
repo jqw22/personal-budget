@@ -777,8 +777,11 @@ form.reply textarea {
 
 /* One table: the year's budget, the actual months and the forecast, then the year's total and average.
    It's only as wide as its figures need rather than stretching to fill the page. */
+/* Every month column is exactly the same width, so the months line up evenly. The table is always
+   twelve months, four figure columns and three separators wide. */
 table.summary.combined {
-  width: auto;
+  table-layout: fixed;
+  width: calc(var(--frozen-category) + 12 * var(--month) + 4 * var(--frozen-figure) + 3 * var(--gap) + 2px);
   min-width: 0;
 }
 
@@ -794,10 +797,20 @@ table.summary.combined :is(col.budget-col, col.diff-col, col.ytd-col, col.avg-co
   width: var(--frozen-figure);
 }
 
+/* Columns that open with a separator get its width on top, so their figures keep the full width. */
+table.summary.combined :is(col.budget-col, col.ytd-col) {
+  width: calc(var(--frozen-figure) + var(--gap));
+}
+
+table.summary.combined col.category-col + col {
+  width: calc(var(--month) + var(--gap));
+}
+
 table.summary.combined {
   --frozen-category: 130px;
   --frozen-figure: 68px;
-  --month: 56px;
+  --month: 64px;
+  --gap: 15px;
 }
 
 table.summary.combined :is(th, td):is(.budget-col, .diff-col, .ytd-col, .avg-col) {
@@ -808,7 +821,7 @@ table.summary.combined :is(th, td):is(.budget-col, .diff-col, .ytd-col, .avg-col
 table.summary.combined tr > :first-child:not([colspan]) + *,
 table.summary.combined :is(th, td):is(.ytd-col, .budget-col, .ytd-start, .budget-start) {
   /* About a quarter of a month column. */
-  border-left: 15px solid var(--bg);
+  border-left: var(--gap) solid var(--bg);
 }
 
 table.summary.combined .fc-start {
