@@ -1,7 +1,8 @@
+import { STORAGE_PREFIX } from './env';
 import { extensionSigner, keySigner, parseSecretKey, type Signer } from './nostr';
 import { DEFAULT_RELAYS } from './relays';
 
-const KEY = 'personal-budget:account';
+const KEY = `${STORAGE_PREFIX}account`;
 
 export interface SavedAccount {
   relays: string[];

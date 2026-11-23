@@ -6,6 +6,8 @@ A web app for importing bank transactions, tagging spending by category and budg
 
 Open https://jqw22.github.io/personal-budget/ in your browser. The page only hosts the app's code: CSVs you import are read and stored in your own browser, never uploaded.
 
+A test copy built from the `dev` branch is at https://jqw22.github.io/personal-budget/dev/. It keeps its own data, in the browser and on relays, so trying changes there never touches the live app. Changes go to `dev` first, get tried on the test copy, then `dev` is merged into `main` to publish them.
+
 ## Running it locally
 
 ```sh
