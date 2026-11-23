@@ -92,6 +92,15 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
   };
   const average = (amount: number) => Math.round(amount / 12);
   const actualClosing = history && opening !== null ? closingBalances(transactions, opening, actualMonths) : null;
+  // The balance going into January: from the bank's balances for a year with data, or from the
+  // forecast for next year, which has none yet.
+  const yearStart =
+    opening === null
+      ? null
+      : actualMonths.length || !fc.months.length
+        ? opening + sum(data.transactions.filter((t) => t.date < `${year}-01-01`).map((t) => t.amount))
+        : fc.closing[0] - (fc.income[0] + fc.transfers[0] - fc.totals[0]);
+  const yearEnd = fc.closing.at(-1) ?? actualClosing?.at(-1) ?? null;
 
   const budgets = data.budgets?.[year] ?? {};
   const budget = (row: string) => budgets[row] ?? 0;
@@ -138,6 +147,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
   const groups = groupSpending(rows, data);
   const totalOf = (list: typeof rows, pick: (r: (typeof rows)[number]) => number) => list.reduce((t, r) => t + pick(r), 0);
   const budgetSpending = totalOf(rows, (r) => (r.category === UNTAGGED ? 0 : budget(r.category)));
+  const budgetClosing = (start: number) => start + budget(INCOME) + budget(TRANSFERS) - budgetSpending;
   const span = 1 + 2 + 2 + actualMonths.length + fc.months.length;
   const label = colMonth;
   /** A figure for a month; given a row to open, clicking it shows the transactions behind it. */
@@ -395,10 +405,13 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
                   {formatPounds(b)}
                 </th>
               ))}
-              <th className="ytd-col" />
+              {/* The year's total column shows where December ends up. */}
+              <th className="num ytd-col">{yearEnd !== null && formatPounds(yearEnd)}</th>
               <th className="avg-col" />
-              <th className="budget-col" />
-              <th className="diff-col" />
+              <th className="num budget-col" title="Balance going into January, plus budgeted income and transfers, less budgeted spending">
+                {yearStart !== null && formatPounds(budgetClosing(yearStart))}
+              </th>
+              <th className="num diff-col">{yearStart !== null && yearEnd !== null && formatPounds(budgetClosing(yearStart) - yearEnd)}</th>
             </tr>
           )}
         </tfoot>
