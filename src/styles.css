@@ -13,6 +13,7 @@
   --edited: #e6e6e1;
   --avg: #eeeeea;
   --forecast: #fdf0f2;
+  --separator: #d6d6d0;
   --danger: #b3261e;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
@@ -36,6 +37,7 @@
     --edited: #3a3a35;
     --avg: #2a2a27;
     --forecast: #33252a;
+    --separator: #4a4a44;
     --danger: #f2867e;
   }
 }
@@ -785,10 +787,10 @@ table.summary.combined :is(th, td):is(.budget-col, .diff-col, .ytd-col, .avg-col
   background: var(--avg);
 }
 
-/* The months start after a line, as the forecast, the year's total and its budget do. */
-table.summary.combined tr:not(.section) > :first-child + *,
-table.summary.combined :is(th, td):is(.ytd-col, .budget-col) {
-  border-left: 2px solid var(--border);
+/* Thin grey separator columns: after the category names, after December and before the budget. */
+table.summary.combined tr > :first-child:not([colspan]) + *,
+table.summary.combined :is(th, td):is(.ytd-col, .budget-col, .ytd-start, .budget-start) {
+  border-left: 6px solid var(--separator);
 }
 
 table.summary.combined .fc-start {

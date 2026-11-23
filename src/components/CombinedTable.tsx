@@ -279,7 +279,10 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
               {group.label && (
                 <tr className="section">
                   <th>{group.label}</th>
-                  <th colSpan={span - 1} />
+                  {/* Split where the separator columns fall, so they run unbroken through the headings. */}
+                  <th colSpan={span - 5} />
+                  <th colSpan={2} className="ytd-start" />
+                  <th colSpan={2} className="budget-start" />
                 </tr>
               )}
               {group.rows.map((r) => (
