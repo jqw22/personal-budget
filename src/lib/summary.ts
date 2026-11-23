@@ -1,4 +1,4 @@
-import { CATEGORY_TYPES, categoryType, type BudgetData, type Transaction } from './types';
+import { categoryType, typeList, type BudgetData, type Transaction } from './types';
 
 /** Categories that move money around rather than spend it, so they're left out of spending totals. */
 export const NOT_SPENDING = ['Transfers', 'Income'];
@@ -104,17 +104,17 @@ export function closingBalances(transactions: Transaction[], opening: number, mo
 }
 
 export interface SpendingGroup<R> {
-  /** "Essential", "Living" or "Discretionary"; null for untagged spending, which is none of them yet. */
+  /** The type's name; null for untagged spending, which has no type yet. */
   label: string | null;
   rows: R[];
 }
 
-/** Splits spending rows into essential, living, then discretionary, each A to Z, then untagged. */
-export function groupSpending<R extends { category: string }>(rows: R[], types: Pick<BudgetData, 'essential' | 'living'>): SpendingGroup<R>[] {
+/** Splits spending rows by type, in the user's type order, each A to Z, then untagged. */
+export function groupSpending<R extends { category: string }>(rows: R[], types: Pick<BudgetData, 'types' | 'categoryTypes'>): SpendingGroup<R>[] {
   const byName = (a: R, b: R) => a.category.localeCompare(b.category, 'en', { sensitivity: 'base' });
   const tagged = rows.filter((r) => r.category !== UNTAGGED);
   const groups: SpendingGroup<R>[] = [
-    ...CATEGORY_TYPES.map(({ type, label }) => ({ label, rows: tagged.filter((r) => categoryType(types, r.category) === type).sort(byName) })),
+    ...typeList(types).map((type) => ({ label: type, rows: tagged.filter((r) => categoryType(types, r.category) === type).sort(byName) })),
     { label: null, rows: rows.filter((r) => r.category === UNTAGGED) },
   ];
   return groups.filter((g) => g.rows.length > 0);

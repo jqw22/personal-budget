@@ -15,7 +15,7 @@ const oldData: BudgetData = {
 describe('migrate', () => {
   it('moves data saved before version 2 onto the renamed categories', () => {
     const data = migrate(oldData);
-    expect(data.version).toBe(3);
+    expect(data.version).toBe(4);
     expect(data.categories).toEqual(['Living/Food', 'Going Out', 'Holidays', 'Subscriptions', 'Other']);
     expect(data.rules[0].category).toBe('Living/Food');
     expect(data.transactions.map((t) => t.category)).toEqual(['Living/Food', 'Subscriptions', 'Other', null]);
@@ -36,7 +36,7 @@ describe('migrate', () => {
     };
     const data = migrate(marked);
     expect(data.categories).toEqual(['Rent & bills', 'Living/Food', 'Going Out']);
-    expect(data.essential).toEqual(['Rent & bills', 'Living/Food']);
+    expect(data.categoryTypes).toEqual({ 'Rent & bills': 'Essential', 'Living/Food': 'Essential', 'Going Out': 'Discretionary' });
     expect(data.rules[0].category).toBe('Living/Food');
     expect(data.transactions[0].category).toBe('Rent & bills');
     expect(data.forecast).toEqual({ '2026-07': { 'Rent & bills': 90000 } });

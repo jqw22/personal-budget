@@ -9,7 +9,7 @@ const t = (id: string, merchant: string, amount: number, category: string | null
 
 const data = {
   ...emptyData(),
-  essential: ['Living/Food'],
+  categoryTypes: { 'Living/Food': 'Essential' },
   rules: [{ id: 'r', match: 'TESCO', category: 'Living/Food' }],
   transactions: [
     t('a', 'TESCO', -1000, 'Living/Food'),
@@ -34,7 +34,7 @@ describe('tagRequest', () => {
     const request = tagRequest(data, untaggedMerchants(data));
     expect(request.merchants).toEqual(['PRET A MANGER|3|-5.20', 'NETFLIX|1|-10.99']);
     expect(request.examples).toEqual(['TESCO → Living/Food']);
-    expect(request.categories).toMatchObject({ 'Living/Food': 'essential', 'Going Out': 'discretionary', Income: 'not spending' });
+    expect(request.categories).toMatchObject({ 'Living/Food': 'Essential', 'Going Out': 'Discretionary', Income: 'not spending' });
     expect(JSON.stringify(request)).not.toContain('99887766');
   });
 });

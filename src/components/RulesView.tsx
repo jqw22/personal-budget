@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
-import { emptyData, renameCategory, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
-import { CATEGORY_TYPES, categoryType, type CategoryType } from '../lib/types';
+import { addType, emptyData, moveType, removeType, renameCategory, renameType, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
+import { categoryType, typeList } from '../lib/types';
 import { NOT_SPENDING } from '../lib/summary';
 import type { BudgetData, Rule } from '../lib/types';
 
@@ -14,7 +14,9 @@ interface Props {
 
 export function RulesView({ data, onChange }: Props) {
   const [newCategory, setNewCategory] = useState('');
-  const [newType, setNewType] = useState<CategoryType | ''>('');
+  const [newType, setNewType] = useState('');
+  const [newTypeName, setNewTypeName] = useState('');
+  const [editingType, setEditingType] = useState<{ from: string; to: string } | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
@@ -32,6 +34,20 @@ export function RulesView({ data, onChange }: Props) {
   }
 
   const setType = setCategoryType;
+
+  function finishTypeRename() {
+    if (!editingType) return;
+    const to = editingType.to.trim();
+    if (to && to !== editingType.from) onChange(renameType(data, editingType.from, to));
+    setEditingType(null);
+  }
+
+  function addNewType() {
+    const name = newTypeName.trim();
+    if (!name || types.includes(name)) return;
+    onChange(addType(data, name));
+    setNewTypeName('');
+  }
 
   function finishRename() {
     if (!editing) return;
@@ -54,23 +70,25 @@ export function RulesView({ data, onChange }: Props) {
       ...data,
       categories: data.categories.filter((c) => c !== name),
       deletedCategories: [...new Set([...(data.deletedCategories ?? []), name])],
-      essential: (data.essential ?? []).filter((c) => c !== name),
-      living: (data.living ?? []).filter((c) => c !== name),
+      categoryTypes: Object.fromEntries(Object.entries(data.categoryTypes ?? {}).filter(([c]) => c !== name)),
       rules,
       transactions: applyRules(transactions, rules),
     });
   }
 
-  // Not spending (Income, Transfers) at the top, then each spending type in summary order, each A to Z.
+  const types = typeList(data);
+  // Not spending (Income, Transfers) at the top, then each spending type in the types' order, each A to Z.
   const sorted = sortedCategories(data.categories);
   const categories = [
     ...sorted.filter((c) => NOT_SPENDING.includes(c)),
-    ...CATEGORY_TYPES.flatMap(({ type }) => sorted.filter((c) => !NOT_SPENDING.includes(c) && categoryType(data, c) === type)),
+    ...types.flatMap((type) => sorted.filter((c) => !NOT_SPENDING.includes(c) && categoryType(data, c) === type)),
   ];
   const counts = new Map<string, number>();
   for (const t of expandSplits(data.transactions)) if (t.category) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
   const rulesFor = (c: string) => data.rules.filter((r) => r.category === c).length;
   const inUse = (c: string) => (counts.get(c) ?? 0) > 0 || rulesFor(c) > 0;
+  const spending = data.categories.filter((c) => !NOT_SPENDING.includes(c));
+  const categoriesOfType = (type: string) => spending.filter((c) => categoryType(data, c) === type).length;
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
   return (
@@ -115,11 +133,11 @@ export function RulesView({ data, onChange }: Props) {
                   <select
                     aria-label={`Type of ${c}`}
                     value={categoryType(data, c)}
-                    onChange={(e) => onChange(setType(data, c, e.target.value as CategoryType))}
+                    onChange={(e) => onChange(setType(data, c, e.target.value))}
                   >
-                    {CATEGORY_TYPES.map(({ type, label }) => (
+                    {types.map((type) => (
                       <option key={type} value={type}>
-                        {label}
+                        {type}
                       </option>
                     ))}
                   </select>
@@ -169,17 +187,91 @@ export function RulesView({ data, onChange }: Props) {
         }}
       >
         <input placeholder="New category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
-        <select aria-label="New category type" required value={newType} onChange={(e) => setNewType(e.target.value as CategoryType)}>
+        <select aria-label="New category type" required value={newType} onChange={(e) => setNewType(e.target.value)}>
           <option value="" disabled>
             Type…
           </option>
-          {CATEGORY_TYPES.map(({ type, label }) => (
+          {types.map((type) => (
             <option key={type} value={type}>
-              {label}
+              {type}
             </option>
           ))}
         </select>
         <button type="submit" disabled={!newCategory.trim() || !newType}>
+          Add
+        </button>
+      </form>
+
+      <h2>Types</h2>
+      <p className="muted">The summary groups spending by type, in this order. Click a type's name to rename it.</p>
+      <table className="categories types">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th className="num">Categories</th>
+            <th>Order</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {types.map((type, i) => (
+            <tr key={type}>
+              <td>
+                {editingType?.from === type ? (
+                  <input
+                    autoFocus
+                    aria-label={`Rename ${type}`}
+                    value={editingType.to}
+                    onChange={(e) => setEditingType({ from: type, to: e.target.value })}
+                    onBlur={finishTypeRename}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') finishTypeRename();
+                      if (e.key === 'Escape') setEditingType(null);
+                    }}
+                  />
+                ) : (
+                  <button className="link name" title={`Rename ${type}`} onClick={() => setEditingType({ from: type, to: type })}>
+                    {type}
+                  </button>
+                )}
+              </td>
+              <td className="num muted">{categoriesOfType(type)}</td>
+              <td className="order">
+                <button className="link" title={`Move ${type} up`} disabled={i === 0} onClick={() => onChange(moveType(data, type, -1))}>
+                  ↑
+                </button>
+                <button
+                  className="link"
+                  title={`Move ${type} down`}
+                  disabled={i === types.length - 1}
+                  onClick={() => onChange(moveType(data, type, 1))}
+                >
+                  ↓
+                </button>
+              </td>
+              <td>
+                <button
+                  className="link"
+                  title={categoriesOfType(type) ? `Give ${type}'s categories another type before removing it` : `Remove ${type}`}
+                  disabled={categoriesOfType(type) > 0 || types.length === 1}
+                  onClick={() => onChange(removeType(data, type))}
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <form
+        className="inline"
+        onSubmit={(e) => {
+          e.preventDefault();
+          addNewType();
+        }}
+      >
+        <input placeholder="New type" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} />
+        <button type="submit" disabled={!newTypeName.trim() || types.includes(newTypeName.trim())}>
           Add
         </button>
       </form>

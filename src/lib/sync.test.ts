@@ -125,18 +125,32 @@ describe('forecast sync', () => {
 });
 
 describe('category type sync', () => {
-  it('round-trips living categories and keeps this device\'s type where both set one', () => {
-    const saved = data([tx('a', '2026-05-01')], { essential: ['Living/Food'], living: ['Going Out'] });
-    expect(fromChunks(toChunks(saved))!.living).toEqual(['Going Out']);
-    const merged = mergeData(data([tx('b', '2026-05-02')], { essential: [], living: ['Living/Food'] }), saved);
-    expect(merged.essential).toEqual([]);
-    expect(merged.living).toEqual(['Living/Food', 'Going Out']);
+  it('round-trips types and keeps this device\'s type for a category where both set one', () => {
+    const saved = data([tx('a', '2026-05-01')], { types: ['Essential', 'Fun'], categoryTypes: { 'Living/Food': 'Essential', 'Going Out': 'Fun' } });
+    const back = fromChunks(toChunks(saved))!;
+    expect(back.types).toEqual(['Essential', 'Fun']);
+    expect(back.categoryTypes).toEqual({ 'Living/Food': 'Essential', 'Going Out': 'Fun' });
+    const mine = data([tx('b', '2026-05-02')], { types: ['Living', 'Essential'], categoryTypes: { 'Living/Food': 'Living' } });
+    const merged = mergeData(mine, saved);
+    expect(merged.types).toEqual(['Living', 'Essential', 'Fun']);
+    expect(merged.categoryTypes).toEqual({ 'Living/Food': 'Living', 'Going Out': 'Fun' });
   });
 
-  it('round-trips and combines essential categories from both devices', () => {
-    const saved = data([tx('a', '2026-05-01')], { essential: ['Rent & bills'] });
-    expect(fromChunks(toChunks(saved))!.essential).toEqual(['Rent & bills']);
-    expect(mergeData(data([tx('b', '2026-05-02')], { essential: ['Living/Food'] }), saved).essential).toEqual(['Living/Food', 'Rent & bills']);
+  it('keeps a removed type removed', () => {
+    const saved = data([tx('a', '2026-05-01')], { types: ['Essential', 'Fun'], categoryTypes: { 'Going Out': 'Fun' } });
+    const mine = data([tx('b', '2026-05-02')], { types: ['Essential'], deletedTypes: ['Fun'] });
+    const merged = mergeData(mine, saved);
+    expect(merged.types).toEqual(['Essential']);
+    expect(merged.categoryTypes).toEqual({});
+  });
+
+  it('turns settings saved before version 4 into types', () => {
+    const old = toChunks(data([tx('a', '2026-05-01')], { version: 3, categories: ['Rent & bills', 'Going Out', 'Income'], types: undefined, categoryTypes: undefined, essential: ['Rent & bills'] } as Partial<BudgetData>));
+    const settings = JSON.parse(old.get('personal-budget:settings')!);
+    old.set('personal-budget:settings', JSON.stringify({ ...settings, essential: ['Rent & bills'] }));
+    const back = fromChunks(old)!;
+    expect(back.types).toEqual(['Essential', 'Living', 'Discretionary']);
+    expect(back.categoryTypes).toEqual({ 'Rent & bills': 'Essential', 'Going Out': 'Discretionary' });
   });
 });
 
@@ -202,13 +216,13 @@ describe('deleted categories', () => {
     const remote = {
       ...emptyData(),
       categories: ['Living/Food', 'Drinks'],
-      essential: ['Drinks'],
+      categoryTypes: { Drinks: 'Essential' },
       rules: [{ id: 'r', match: 'PUB', category: 'Drinks' }],
       transactions: [t],
     };
     const merged = mergeData(local, remote);
     expect(merged.categories).toEqual(['Living/Food']);
-    expect(merged.essential).toEqual([]);
+    expect(merged.categoryTypes).toEqual({});
     expect(merged.rules).toEqual([]);
     expect(merged.deletedCategories).toEqual(['Drinks']);
     expect(merged.transactions[0].category).toBeNull();

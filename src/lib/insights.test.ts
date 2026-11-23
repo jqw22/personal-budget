@@ -9,7 +9,7 @@ const t = (id: string, date: string, amount: number, category: string | null, me
 
 const data = {
   ...emptyData(),
-  essential: ['Rent & bills'],
+  categoryTypes: { 'Rent & bills': 'Essential' },
   goals: [{ id: 'g', text: 'Save £3,000 by June' }],
   transactions: [
     // The bank's balance after the first payment implies £1,000 before it.
@@ -31,7 +31,7 @@ describe('reviewData', () => {
       { month: '2026-05', income: 2000, spending: { 'Rent & bills': 800, 'Going Out': 51 }, totalSpending: 851, untaggedMoneyIn: 0, closingBalance: 2150 },
       { month: '2026-06', income: 2000, spending: { 'Rent & bills': 800, 'Going Out': 70, Untagged: 10 }, totalSpending: 880, untaggedMoneyIn: 0, closingBalance: 3270 },
     ]);
-    expect(review.categories).toEqual({ 'Rent & bills': 'essential', 'Going Out': 'discretionary', Untagged: 'untagged' });
+    expect(review.categories).toEqual({ 'Rent & bills': 'Essential', 'Going Out': 'Discretionary', Untagged: 'untagged' });
     expect(review.latestMonth).toEqual({ month: '2026-06', firstDate: '2026-06-01', lastDate: '2026-06-15' });
   });
 

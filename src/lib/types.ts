@@ -53,9 +53,15 @@ export interface BudgetData {
   transactions: Transaction[];
   rules: Rule[];
   categories: string[];
-  /** Spending categories that are essential. */
+  /** The user's spending types (such as Essential), in the order the summary shows them. */
+  types?: string[];
+  /** Each spending category's type, by category name. */
+  categoryTypes?: Record<string, string>;
+  /** Types the user removed, so syncing with another device doesn't bring them back. */
+  deletedTypes?: string[];
+  /** Before version 4: essential categories. Only read when upgrading. */
   essential?: string[];
-  /** Spending categories that are living costs. Every spending category in neither list is discretionary. */
+  /** Before version 4: living categories. Only read when upgrading. */
   living?: string[];
   /**
    * Forecast amounts typed in by the user, in pence, by month ("2026-07") then
@@ -95,15 +101,17 @@ export const DEFAULT_CATEGORIES = [
   'Other',
 ];
 
-export type CategoryType = 'essential' | 'living' | 'discretionary';
+/** The spending types a new budget starts with, in the order the summary shows them. */
+export const DEFAULT_TYPES = ['Essential', 'Living', 'Discretionary'];
 
-/** Spending types in the order the summary shows them. */
-export const CATEGORY_TYPES: { type: CategoryType; label: string }[] = [
-  { type: 'essential', label: 'Essential' },
-  { type: 'living', label: 'Living' },
-  { type: 'discretionary', label: 'Discretionary' },
-];
+/** The user's spending types, in their order. */
+export function typeList(data: Pick<BudgetData, 'types'>): string[] {
+  return data.types?.length ? data.types : DEFAULT_TYPES;
+}
 
-export function categoryType(data: Pick<BudgetData, 'essential' | 'living'>, category: string): CategoryType {
-  return data.essential?.includes(category) ? 'essential' : data.living?.includes(category) ? 'living' : 'discretionary';
+/** A spending category's type; one never given a type (or whose type was removed) counts as the last type. */
+export function categoryType(data: Pick<BudgetData, 'types' | 'categoryTypes'>, category: string): string {
+  const types = typeList(data);
+  const type = data.categoryTypes?.[category];
+  return type && types.includes(type) ? type : types[types.length - 1];
 }

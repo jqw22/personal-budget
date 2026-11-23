@@ -517,6 +517,19 @@ table.categories td {
   vertical-align: middle;
 }
 
+table.types td.order {
+  white-space: nowrap;
+}
+
+table.types td.order button + button {
+  margin-left: 12px;
+}
+
+table.types button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .balance-chart {
   position: relative;
   margin-bottom: 24px;

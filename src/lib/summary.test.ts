@@ -68,12 +68,20 @@ describe('closingBalances', () => {
 describe('groupSpending', () => {
   it('puts essential rows first, then living, then discretionary, each A to Z, then untagged', () => {
     const rows = [{ category: 'Holidays' }, { category: 'Untagged' }, { category: 'Rent & bills' }, { category: 'Living/Food' }, { category: 'Going Out' }];
-    expect(groupSpending(rows, { essential: ['Rent & bills'], living: ['Living/Food'] }).map((g) => [g.label, g.rows.map((r) => r.category)])).toEqual([
+    expect(groupSpending(rows, { types: ['Essential', 'Living', 'Discretionary'], categoryTypes: { 'Rent & bills': 'Essential', 'Living/Food': 'Living' } }).map((g) => [g.label, g.rows.map((r) => r.category)])).toEqual([
       ['Essential', ['Rent & bills']],
       ['Living', ['Living/Food']],
       ['Discretionary', ['Going Out', 'Holidays']],
       [null, ['Untagged']],
     ]);
+  });
+});
+
+describe('groupSpending with the user\'s own types', () => {
+  it('follows the order of the types list', () => {
+    const rows = [{ category: 'Rent & bills' }, { category: 'Holidays' }];
+    const types = { types: ['Fun', 'Bills'], categoryTypes: { 'Rent & bills': 'Bills', Holidays: 'Fun' } };
+    expect(groupSpending(rows, types).map((g) => g.label)).toEqual(['Fun', 'Bills']);
   });
 });
 
