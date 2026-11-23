@@ -272,7 +272,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
             <td className="num diff-col">{formatPounds(budget(TRANSFERS) - ytd.transfers)}</td>
           </tr>
           <tr className="subtotal income-total">
-            <th>Total income</th>
+            <th>Total</th>
             {actualMonths.map((m, i) => actualCell(m, history!.income[i] + history!.transfers[i], 'th'))}
             {fc.months.map((m, i) => (
               <th key={`f${m}`} className={`num fc ${i === 0 ? 'fc-start' : ''}`}>
