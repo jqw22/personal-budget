@@ -39,7 +39,9 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const [remember, setRemember] = useState(false);
   const [search, setSearch] = useState('');
   /** Tagged by a merchant rule (auto), by hand (including splits), or either. */
-  const [source, setSource] = useState<'all' | 'auto' | 'manual' | 'split'>('all');
+  const [source, setSource] = useState<'all' | 'auto' | 'manual'>('all')
+  /** Split transactions only, unsplit only, or either. */
+  const [splitFilter, setSplitFilter] = useState<'all' | 'split' | 'unsplit'>('all');
   const [sort, setSort] = useState<Sort>('date');
   /** The transaction whose split is being edited. */
   const [splitting, setSplitting] = useState<string | null>(null);
@@ -56,12 +58,11 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
     .filter((t) =>
       source === 'all'
         ? true
-        : source === 'split'
-          ? !!t.splits?.length
-          : source === 'auto'
-            ? t.categorySource === 'rule' && !t.splits?.length
-            : t.categorySource === 'manual',
+        : source === 'auto'
+          ? t.categorySource === 'rule' && !t.splits?.length
+          : t.categorySource === 'manual',
     )
+    .filter((t) => splitFilter === 'all' || (splitFilter === 'split') === !!t.splits?.length)
     .filter((t) => !search || `${t.description}\n${t.note ?? ''}`.toLowerCase().includes(search.toLowerCase()))
     .slice()
     .reverse();
@@ -153,7 +154,11 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
           <option value="all">Auto and by hand</option>
           <option value="auto">Auto only</option>
           <option value="manual">By hand only</option>
+        </select>
+        <select value={splitFilter} onChange={(e) => setSplitFilter(e.target.value as typeof splitFilter)} aria-label="Split">
+          <option value="all">Split and not split</option>
           <option value="split">Split only</option>
+          <option value="unsplit">Not split</option>
         </select>
         <input type="search" placeholder="Search descriptions and notes" value={search} onChange={(e) => setSearch(e.target.value)} />
         <label title="When you tag a transaction, tag every other transaction from the same place the same way">
