@@ -3,6 +3,7 @@ import type { Event } from 'nostr-tools';
 import { withSplit } from './splits';
 import { applyRules } from './rules';
 import { migrate } from './store';
+import { NOT_SPENDING } from './summary';
 import { DEFAULT_CATEGORIES, typeList, type BudgetData, type Rule, type Transaction } from './types';
 
 /** NIP-78 application data: addressable events, one per `d` tag, each replacing the last. */
@@ -129,7 +130,8 @@ function isUntouched(data: BudgetData): boolean {
  * device's rule wins where both match the same merchant, and the newer insights review is kept.
  */
 function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
-  const deleted = new Set([...(local.deletedCategories ?? []), ...(remote.deletedCategories ?? [])]);
+  // Income and Transfers are built in, so neither device can have deleted them.
+  const deleted = new Set([...(local.deletedCategories ?? []), ...(remote.deletedCategories ?? [])].filter((c) => !NOT_SPENDING.includes(c)));
   const kept = (c: string) => !deleted.has(c);
   const rules: Rule[] = [...local.rules];
   const known = new Set(local.rules.map((r) => r.match.toUpperCase()));

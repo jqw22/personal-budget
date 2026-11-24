@@ -141,6 +141,13 @@ export function migrate(data: BudgetData): BudgetData {
       categoryTypes: { ...Object.fromEntries(next.categories.filter((c) => !NOT_SPENDING.includes(c)).map((c) => [c, type(c)])), ...next.categoryTypes },
     };
   }
+  // Income and Transfers are built in: the summary has rows of its own for them, so they always exist.
+  const missing = NOT_SPENDING.filter((c) => !next.categories.includes(c));
+  if (missing.length || next.deletedCategories?.some((c) => NOT_SPENDING.includes(c))) {
+    const deletedCategories = (next.deletedCategories ?? []).filter((c) => !NOT_SPENDING.includes(c));
+    next = { ...next, categories: [...next.categories, ...missing], deletedCategories };
+    if (!deletedCategories.length) delete next.deletedCategories;
+  }
   return { ...next, version: VERSION };
 }
 

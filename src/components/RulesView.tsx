@@ -122,6 +122,8 @@ export function RulesView({ data, onChange }: Props) {
                       if (e.key === 'Escape') setEditing(null);
                     }}
                   />
+                ) : NOT_SPENDING.includes(c) ? (
+                  c
                 ) : (
                   <button className="link name" title={`Rename ${c}`} onClick={() => setEditing({ from: c, to: c })}>
                     {c}
@@ -147,13 +149,16 @@ export function RulesView({ data, onChange }: Props) {
               </td>
               <td className="num muted">{counts.get(c) ?? 0}</td>
               <td>
-                <button
-                  className="link"
-                  title={`Remove ${c}`}
-                  onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
-                >
-                  ×
-                </button>
+                {/* Income and Transfers are built in: the summary has rows of its own for them. */}
+                {!NOT_SPENDING.includes(c) && (
+                  <button
+                    className="link"
+                    title={`Remove ${c}`}
+                    onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
+                  >
+                    ×
+                  </button>
+                )}
               </td>
             </tr>
           ))}
