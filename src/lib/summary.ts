@@ -226,7 +226,9 @@ export function forecastFrom(
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
   const amount = (m: string, row: string, ytd: number, soFar: number) =>
     figures[m]?.[row] ?? (m === restOf && !wholePartMonth ? Math.max(0, average(ytd) - soFar) : average(ytd));
-  const income = months.map((m) => amount(m, 'Income', history.ytd.income, actual.income[0]));
+  const income = months.map((m) =>
+    unforecast.includes('Income') ? (figures[m]?.Income ?? 0) : amount(m, 'Income', history.ytd.income, actual.income[0]),
+  );
   const transfers = months.map((m) => figures[m]?.Transfers ?? 0);
   const spent = new Set(history.rows.map((r) => r.category));
   const rowCategories = [

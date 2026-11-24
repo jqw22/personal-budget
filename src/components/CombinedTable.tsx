@@ -1,7 +1,7 @@
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import { formatPounds } from '../lib/format';
 import { categoryHistory, closingBalances, forecastFrom, groupSpending, UNTAGGED } from '../lib/summary';
-import { unforecastCategories, type BudgetData } from '../lib/types';
+import type { BudgetData } from '../lib/types';
 import { BalanceChart, type ChartColumn } from './BalanceChart';
 import { MoneyInput, net, shortMonth } from './forecastParts';
 import { expandSplits } from '../lib/splits';
@@ -78,7 +78,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
   const fc = inYear(
     forecastCount === null
       ? { months: [], restOf: null, income: [], transfers: [], rows: [], totals: [], closing: [] }
-      : forecastFrom(transactions, saved, opening, data.categories, forecastCount, unforecastCategories(data, data.categories), true),
+      : forecastFrom(transactions, saved, opening, data.categories, forecastCount, data.categories, true),
     year,
   );
   const actualMonths = history?.months ?? [];

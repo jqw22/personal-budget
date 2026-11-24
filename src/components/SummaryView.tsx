@@ -9,7 +9,7 @@ import {
   UNTAGGED,
 } from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
-import { unforecastCategories, type BudgetData } from '../lib/types';
+import type { BudgetData } from '../lib/types';
 import { CombinedTable } from './CombinedTable';
 import { expandSplits } from '../lib/splits';
 
@@ -87,7 +87,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const lastActual = days.at(-1);
   const forecast =
     lastActual && isLatestYear
-      ? dailyForecast(transactions, data.forecast, lastActual, chartEnd, data.categories, unforecastCategories(data, data.categories))
+      ? dailyForecast(transactions, data.forecast, lastActual, chartEnd, data.categories, data.categories)
       : [];
 
   return (

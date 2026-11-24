@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
-import { addType, emptyData, moveType, removeType, renameCategory, renameType, setCategoryType, setTypeForecast, sortedCategories, forgetDeleted } from '../lib/store';
+import { addType, emptyData, moveType, removeType, renameCategory, renameType, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
 import { categoryType, typeList } from '../lib/types';
 import { NOT_SPENDING } from '../lib/summary';
 import type { BudgetData, Rule } from '../lib/types';
@@ -211,15 +211,13 @@ export function RulesView({ data, onChange }: Props) {
 
       <h2>Types</h2>
       <p className="muted">
-        The summary groups spending by type, in this order. Click a type's name to rename it. A type that isn't forecast
-        starts at £0 in the forecast instead of its average; you can still type in a figure.
+        The summary groups spending by type, in this order. Click a type's name to rename it.
       </p>
       <table className="categories types">
         <thead>
           <tr>
             <th>Type</th>
             <th className="num">Categories</th>
-            <th>Forecast</th>
             <th>Order</th>
             <th />
           </tr>
@@ -247,17 +245,6 @@ export function RulesView({ data, onChange }: Props) {
                 )}
               </td>
               <td className="num muted">{categoriesOfType(type)}</td>
-              <td>
-                <label className="forecast-toggle">
-                  <input
-                    type="checkbox"
-                    aria-label={`Forecast ${type}`}
-                    checked={!(data.noForecastTypes ?? []).includes(type)}
-                    onChange={(e) => onChange(setTypeForecast(data, type, e.target.checked))}
-                  />
-                  {(data.noForecastTypes ?? []).includes(type) ? 'No' : 'Yes'}
-                </label>
-              </td>
               <td className="order">
                 <button className="link" title={`Move ${type} up`} disabled={i === 0} onClick={() => onChange(moveType(data, type, -1))}>
                   ↑
