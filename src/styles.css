@@ -957,7 +957,7 @@ button.link.note-add {
   display: inline;
   margin-left: 10px;
   padding: 0;
-  font-size: 0.85rem;
+  font-size: inherit;
   text-align: left;
 }
 
@@ -987,7 +987,7 @@ input.note-input {
   width: 16em;
   max-width: 100%;
   margin-left: 10px;
-  font-size: 0.85rem;
+  font-size: inherit;
 }
 
 /* A blank row between total spending and the under / over spend. */
