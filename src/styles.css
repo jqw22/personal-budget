@@ -1005,6 +1005,9 @@ table.summary.combined tr.gap-row td {
 .table-wrap.summary-wrap {
   max-height: calc(100vh - 16px);
   overflow: auto;
+  /* Room on the right for the up-down scrollbar, so it never sits over the Difference column. */
+  scrollbar-gutter: stable;
+  padding-right: 12px;
 }
 
 /* Separate borders, so the stuck heading rows paint over everything scrolled beneath them. */
