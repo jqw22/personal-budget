@@ -20,6 +20,8 @@ export function RulesView({ data, onChange }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  /** Merchant rules A to Z by merchant, or grouped by category. */
+  const [ruleSort, setRuleSort] = useState<'merchant' | 'category'>('merchant');
 
   function setRules(rules: Rule[]) {
     onChange({ ...data, rules, transactions: applyRules(data.transactions, rules) });
@@ -302,14 +304,25 @@ export function RulesView({ data, onChange }: Props) {
         <table>
           <thead>
             <tr>
-              <th>Merchant contains</th>
-              <th>Category</th>
+              <th aria-sort={ruleSort === 'merchant' ? 'ascending' : undefined}>
+                <button className="link sort" title="Sort by merchant, A to Z" onClick={() => setRuleSort('merchant')}>
+                  Merchant contains{ruleSort === 'merchant' && ' ▲'}
+                </button>
+              </th>
+              <th aria-sort={ruleSort === 'category' ? 'ascending' : undefined}>
+                <button className="link sort" title="Sort by category, A to Z, then merchant" onClick={() => setRuleSort('category')}>
+                  Category{ruleSort === 'category' && ' ▲'}
+                </button>
+              </th>
               <th />
             </tr>
           </thead>
           <tbody>
             {[...data.rules]
-              .sort((a, b) => a.match.localeCompare(b.match))
+              .sort((a, b) => {
+                const byMerchant = a.match.localeCompare(b.match, 'en', { sensitivity: 'base' });
+                return ruleSort === 'category' ? a.category.localeCompare(b.category, 'en', { sensitivity: 'base' }) || byMerchant : byMerchant;
+              })
               .map((r) => (
                 <tr key={r.id}>
                   <td>
