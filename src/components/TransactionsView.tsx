@@ -6,7 +6,39 @@ import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/
 import { parseMoney } from '../lib/importer';
 import { amountIn, isTagged, MAX_PARTS, splitProblem, withSplit } from '../lib/splits';
 import { sortedCategories } from '../lib/store';
-import type { BudgetData, Split, Transaction } from '../lib/types';
+import { NOT_SPENDING } from '../lib/summary';
+import { categoryType, typeList, type BudgetData, type Split, type Transaction } from '../lib/types';
+
+/** Categories under their type: Not spending first, then each spending type in order, each A to Z. */
+type CategoryGroups = { label: string; categories: string[] }[];
+
+function categoryGroups(data: BudgetData): CategoryGroups {
+  const sorted = sortedCategories(data.categories);
+  return [
+    { label: 'Not spending', categories: sorted.filter((c) => NOT_SPENDING.includes(c)) },
+    ...typeList(data).map((type) => ({
+      label: type,
+      categories: sorted.filter((c) => !NOT_SPENDING.includes(c) && categoryType(data, c) === type),
+    })),
+  ].filter((g) => g.categories.length > 0);
+}
+
+/** A dropdown's category options, headed by their type so it shows while choosing. */
+function CategoryOptions({ groups }: { groups: CategoryGroups }) {
+  return (
+    <>
+      {groups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 
 interface Props {
   data: BudgetData;
@@ -123,7 +155,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   // Worked out over every transaction, so a filtered download still shows the real balance on each row.
   const balances = opening === null ? null : runningBalances(data.transactions, opening);
   const untagged = data.transactions.filter((t) => !isTagged(t)).length;
-  const categories = sortedCategories(data.categories);
+  const groups = categoryGroups(data);
 
   return (
     <section>
@@ -144,11 +176,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
         <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">
           <option value="all">All categories</option>
           <option value={UNTAGGED_FILTER}>Untagged</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
+          <CategoryOptions groups={groups} />
         </select>
         <select value={source} onChange={(e) => setSource(e.target.value as typeof source)} aria-label="Tagged by">
           <option value="all">Auto and by hand</option>
@@ -239,11 +267,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                     ) : (
                       <select value={t.category ?? ''} onChange={(e) => tag(t, e.target.value)}>
                         <option value="">Untagged</option>
-                        {categories.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
+                        <CategoryOptions groups={groups} />
                       </select>
                     )}
                     {t.categorySource === 'rule' && <span className="hint" title="Tagged by a merchant rule">auto</span>}
@@ -282,7 +306,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                 {splitting === t.id && (
                   <tr className="split-row">
                     <td colSpan={4}>
-                      <SplitEditor t={t} categories={categories} onSave={(parts) => split(t, parts)} onCancel={() => setSplitting(null)} />
+                      <SplitEditor t={t} groups={groups} onSave={(parts) => split(t, parts)} onCancel={() => setSplitting(null)} />
                     </td>
                   </tr>
                 )}
@@ -302,12 +326,12 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
  */
 function SplitEditor({
   t,
-  categories,
+  groups,
   onSave,
   onCancel,
 }: {
   t: Transaction;
-  categories: string[];
+  groups: CategoryGroups;
   onSave: (parts: Split[] | null) => void;
   onCancel: () => void;
 }) {
@@ -359,11 +383,7 @@ function SplitEditor({
           )}
           <select value={r.category} onChange={(e) => update(i, { category: e.target.value })} aria-label={`Part ${i + 1} category`}>
             <option value="">Choose…</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
+            <CategoryOptions groups={groups} />
           </select>
           {rows.length > 2 && (
             <button className="link" title={`Remove part ${i + 1}`} onClick={() => setRows(rows.filter((_, j) => j !== i))}>
