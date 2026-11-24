@@ -817,11 +817,11 @@ table.summary.combined :is(th, td):is(.budget-col, .diff-col, .ytd-col, .avg-col
   background: var(--avg);
 }
 
-/* Separator columns in the page background colour: after the category names, after December and before the budget. */
+/* White separator columns: after the category names, after December and before the budget. */
 table.summary.combined tr > :first-child:not([colspan]) + *,
 table.summary.combined :is(th, td):is(.ytd-col, .budget-col, .ytd-start, .budget-start) {
   /* About a quarter of a month column. */
-  border-left: var(--gap) solid var(--bg);
+  border-left: var(--gap) solid var(--surface);
 }
 
 table.summary.combined .fc-start {
