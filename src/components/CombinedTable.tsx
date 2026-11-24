@@ -117,8 +117,8 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
       <MoneyInput
         value={budget(row)}
         edited={budgets[row] !== undefined}
-        label={`${row} budget, ${year}`}
-        hint={`Your budget for ${row} in ${year}. Type to change it.`}
+        label={`${row} planned, ${year}`}
+        hint={`What you plan for ${row} in ${year}. Type to change it.`}
         onCommit={(p) => setBudget(row, p)}
       />
     </td>
@@ -217,10 +217,10 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
             <th className="num avg-col" title={`Total divided by 12`}>
               Average
             </th>
-            <th className="num budget-col" title={`Your budget for the whole of ${year}`}>
-              Budget
+            <th className="num budget-col" title={`What you plan for the whole of ${year}`}>
+              Planned
             </th>
-            <th className="num diff-col" title="Budget minus Total">
+            <th className="num diff-col" title="Planned minus Total">
               Difference
             </th>
           </tr>
@@ -408,7 +408,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
               {/* The year's total column shows where December ends up. */}
               <th className="num ytd-col">{yearEnd !== null && formatPounds(yearEnd)}</th>
               <th className="avg-col" />
-              <th className="num budget-col" title="Balance going into January, plus budgeted income and transfers, less budgeted spending">
+              <th className="num budget-col" title="Balance going into January, plus planned income and transfers, less planned spending">
                 {yearStart !== null && formatPounds(budgetClosing(yearStart))}
               </th>
               <th className="num diff-col">{yearStart !== null && yearEnd !== null && formatPounds(budgetClosing(yearStart) - yearEnd)}</th>

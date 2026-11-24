@@ -39,7 +39,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const [remember, setRemember] = useState(false);
   const [search, setSearch] = useState('');
   /** Tagged by a merchant rule (auto), by hand (including splits), or either. */
-  const [source, setSource] = useState<'all' | 'auto' | 'manual'>('all');
+  const [source, setSource] = useState<'all' | 'auto' | 'manual' | 'split'>('all');
   const [sort, setSort] = useState<Sort>('date');
   /** The transaction whose split is being edited. */
   const [splitting, setSplitting] = useState<string | null>(null);
@@ -53,7 +53,15 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
         category === 'all' ||
         (category === UNTAGGED_FILTER ? !isTagged(t) : t.category === category || t.splits?.some((p) => p.category === category)),
     )
-    .filter((t) => source === 'all' || (source === 'auto' ? t.categorySource === 'rule' && !t.splits?.length : t.categorySource === 'manual'))
+    .filter((t) =>
+      source === 'all'
+        ? true
+        : source === 'split'
+          ? !!t.splits?.length
+          : source === 'auto'
+            ? t.categorySource === 'rule' && !t.splits?.length
+            : t.categorySource === 'manual',
+    )
     .filter((t) => !search || `${t.description}\n${t.note ?? ''}`.toLowerCase().includes(search.toLowerCase()))
     .slice()
     .reverse();
@@ -145,6 +153,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
           <option value="all">Auto and by hand</option>
           <option value="auto">Auto only</option>
           <option value="manual">By hand only</option>
+          <option value="split">Split only</option>
         </select>
         <input type="search" placeholder="Search descriptions and notes" value={search} onChange={(e) => setSearch(e.target.value)} />
         <label title="When you tag a transaction, tag every other transaction from the same place the same way">
@@ -211,29 +220,6 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                   <td className="nowrap">{formatDate(t.date)}</td>
                   <td title={t.description}>
                     {t.merchant}
-                    {noting?.id === t.id ? (
-                      <input
-                        className="note-input"
-                        autoFocus
-                        aria-label={`Note on ${t.merchant}`}
-                        placeholder="Add a note"
-                        value={noting.text}
-                        onChange={(e) => setNoting({ id: t.id, text: e.target.value })}
-                        onBlur={saveNote}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveNote();
-                          if (e.key === 'Escape') setNoting(null);
-                        }}
-                      />
-                    ) : t.note ? (
-                      <button className="link note" title="Change this note" onClick={() => setNoting({ id: t.id, text: t.note ?? '' })}>
-                        {t.note}
-                      </button>
-                    ) : (
-                      <button className="link note-add" onClick={() => setNoting({ id: t.id, text: '' })}>
-                        + Note
-                      </button>
-                    )}
                   </td>
                   <td className={`num ${t.amount > 0 ? 'in' : ''}`}>{formatMoney(t.amount)}</td>
                   <td>
@@ -263,6 +249,29 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                     >
                       {t.splits?.length ? 'Edit split' : 'Split'}
                     </button>
+                    {noting?.id === t.id ? (
+                      <input
+                        className="note-input"
+                        autoFocus
+                        aria-label={`Note on ${t.merchant}`}
+                        placeholder="Add a note"
+                        value={noting.text}
+                        onChange={(e) => setNoting({ id: t.id, text: e.target.value })}
+                        onBlur={saveNote}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveNote();
+                          if (e.key === 'Escape') setNoting(null);
+                        }}
+                      />
+                    ) : t.note ? (
+                      <button className="link note" title="Change this note" onClick={() => setNoting({ id: t.id, text: t.note ?? '' })}>
+                        {t.note}
+                      </button>
+                    ) : (
+                      <button className="link note-add" onClick={() => setNoting({ id: t.id, text: '' })}>
+                        + Note
+                      </button>
+                    )}
                   </td>
                 </tr>
                 {splitting === t.id && (

@@ -951,10 +951,11 @@ table.transactions tr.split-row td {
 }
 
 /* The user's own note on a transaction, under the bank's description. */
+/* The note follows the category and Split, on the same line. */
 button.link.note,
 button.link.note-add {
-  display: block;
-  margin-top: 2px;
+  display: inline;
+  margin-left: 10px;
   padding: 0;
   font-size: 0.85rem;
   text-align: left;
@@ -982,9 +983,10 @@ button.link.note-add:focus-visible {
 }
 
 input.note-input {
-  display: block;
-  width: 100%;
-  margin-top: 2px;
+  display: inline-block;
+  width: 16em;
+  max-width: 100%;
+  margin-left: 10px;
   font-size: 0.85rem;
 }
 
