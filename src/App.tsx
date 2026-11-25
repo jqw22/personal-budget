@@ -47,11 +47,11 @@ export function App() {
           <button className={tab === 'summary' ? 'active' : ''} onClick={() => openTab('summary')}>
             Summary
           </button>
-          <button className={tab === 'transactions' ? 'active' : ''} onClick={() => openTab('transactions')}>
-            Transactions{untagged > 0 && <span className="badge">{untagged}</span>}
-          </button>
           <button className={tab === 'planning' ? 'active' : ''} onClick={() => openTab('planning')}>
             Planning
+          </button>
+          <button className={tab === 'transactions' ? 'active' : ''} onClick={() => openTab('transactions')}>
+            Transactions{untagged > 0 && <span className="badge">{untagged}</span>}
           </button>
           <button className={tab === 'categories' ? 'active' : ''} onClick={() => openTab('categories')}>
             Categories
