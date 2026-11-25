@@ -185,6 +185,11 @@ export function migrate(data: BudgetData): BudgetData {
     for (const c of NOT_SPENDING) if (categoryTypes[c] && !isIncomeType(next, categoryTypes[c])) delete categoryTypes[c];
     next = { ...next, categoryTypes };
   }
+  // The Claude features (and the Anthropic API key they used) were removed, so don't keep the key.
+  if ('anthropicKey' in next) {
+    const { anthropicKey: _, ...rest } = next as BudgetData & { anthropicKey?: string };
+    next = rest;
+  }
   return { ...next, version: VERSION };
 }
 

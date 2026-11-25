@@ -660,23 +660,9 @@ table.types button:disabled {
   color: var(--muted);
 }
 
-.actions.saved-key {
-  align-items: center;
-}
 
-.auto-tag {
-  margin-bottom: 16px;
-}
 
-.auto-tag h3 {
-  margin-bottom: 0;
-}
 
-.auto-tag td {
-  vertical-align: middle;
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
 
 .balance-chart .line.forecast {
   stroke-dasharray: 5 4;

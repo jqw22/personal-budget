@@ -17,7 +17,7 @@ const SETTINGS = `${PREFIX}settings`;
 const PART_BYTES = 20000;
 
 function settingsJson(data: BudgetData): string {
-  return JSON.stringify({ version: data.version, categories: data.categories, types: data.types, incomeGroups: data.incomeGroups, categoryTypes: data.categoryTypes, deletedTypes: data.deletedTypes, noForecastTypes: data.noForecastTypes, rules: data.rules, forecast: data.forecast, budgets: data.budgets, openingBalance: data.openingBalance, anthropicKey: data.anthropicKey, deletedCategories: data.deletedCategories });
+  return JSON.stringify({ version: data.version, categories: data.categories, types: data.types, incomeGroups: data.incomeGroups, categoryTypes: data.categoryTypes, deletedTypes: data.deletedTypes, noForecastTypes: data.noForecastTypes, rules: data.rules, forecast: data.forecast, budgets: data.budgets, openingBalance: data.openingBalance, deletedCategories: data.deletedCategories });
 }
 
 export function isOurs(d: string): boolean {
@@ -68,7 +68,7 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     transactions.push(...(JSON.parse(plaintext).transactions as Transaction[]));
   }
   if (!settings && transactions.length === 0) return null;
-  const { version, categories, essential, living, types, incomeGroups, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, anthropicKey, deletedCategories } = settings
+  const { version, categories, essential, living, types, incomeGroups, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, deletedCategories } = settings
     ? JSON.parse(settings)
     : { version: undefined, categories: [], rules: [] };
   return migrate({
@@ -85,7 +85,6 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     ...(forecast ? { forecast } : {}),
     ...(budgets ? { budgets } : {}),
     ...(openingBalance !== undefined ? { openingBalance } : {}),
-    ...(anthropicKey ? { anthropicKey } : {}),
     ...(deletedCategories?.length ? { deletedCategories } : {}),
     transactions: dedupe(transactions).sort((a, b) => a.date.localeCompare(b.date)),
   });
@@ -142,7 +141,6 @@ function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
     forecast: mergeForecast(local.forecast, remote.forecast),
     budgets: mergeForecast(local.budgets, remote.budgets),
     openingBalance: local.openingBalance ?? remote.openingBalance,
-    anthropicKey: local.anthropicKey ?? remote.anthropicKey,
   };
 }
 
@@ -182,7 +180,7 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
   // A device that has never been used only has the starting categories, so it takes the saved ones
   // as they are rather than adding back defaults the user removed or renamed.
   if (isUntouched(local)) return remote;
-  const { categories, types, incomeGroups, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, anthropicKey, deletedCategories } = mergeSettings(local, remote);
+  const { categories, types, incomeGroups, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, deletedCategories } = mergeSettings(local, remote);
   const byId = new Map(local.transactions.map((t) => [t.id, t]));
   for (const t of remote.transactions) {
     const mine = byId.get(t.id);
@@ -202,7 +200,6 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
     ...(forecast ? { forecast } : {}),
     ...(budgets ? { budgets } : {}),
     ...(openingBalance !== undefined ? { openingBalance } : {}),
-    ...(anthropicKey ? { anthropicKey } : {}),
     ...(deletedCategories?.length ? { deletedCategories } : {}),
     transactions: applyRules(transactions, rules),
   };
@@ -235,7 +232,7 @@ export function applyRemote(local: BudgetData, base: Map<string, string>, incomi
     const remote = (parsed.version ?? 1) < (local.version ?? 1) ? migrate({ ...local, ...parsed, version: parsed.version ?? 1 }) : ({ ...local, ...parsed } as BudgetData);
     const unchangedHere = !base.has(SETTINGS) || base.get(SETTINGS) === settingsJson(local);
     next = unchangedHere
-      ? { ...local, categories: remote.categories, types: remote.types, incomeGroups: remote.incomeGroups, categoryTypes: remote.categoryTypes, deletedTypes: remote.deletedTypes, noForecastTypes: remote.noForecastTypes, rules: remote.rules, forecast: remote.forecast, budgets: remote.budgets, openingBalance: remote.openingBalance, anthropicKey: remote.anthropicKey, deletedCategories: remote.deletedCategories }
+      ? { ...local, categories: remote.categories, types: remote.types, incomeGroups: remote.incomeGroups, categoryTypes: remote.categoryTypes, deletedTypes: remote.deletedTypes, noForecastTypes: remote.noForecastTypes, rules: remote.rules, forecast: remote.forecast, budgets: remote.budgets, openingBalance: remote.openingBalance, deletedCategories: remote.deletedCategories }
       : mergeSettings(local, remote);
   }
 

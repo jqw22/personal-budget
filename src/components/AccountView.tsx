@@ -6,7 +6,6 @@ import type { useSync } from '../lib/useSync';
 
 interface Props {
   sync: ReturnType<typeof useSync>;
-  data: BudgetData;
   onChange: (data: BudgetData) => void;
 }
 
@@ -30,7 +29,7 @@ export function syncLabel(state: Props['sync']['state']): string {
   }
 }
 
-export function AccountView({ sync, data, onChange }: Props) {
+export function AccountView({ sync, onChange }: Props) {
   const { signer, state, account } = sync;
   const [nsec, setNsec] = useState('');
   const [remember, setRemember] = useState(true);
@@ -56,7 +55,6 @@ export function AccountView({ sync, data, onChange }: Props) {
     .map((r) => r.trim())
     .filter((r) => /^wss?:\/\/./.test(r));
 
-  const claudeSettings = <ClaudeKey data={data} onChange={onChange} signedIn={Boolean(signer)} />;
 
   const dataSettings = (
     <>
@@ -136,7 +134,6 @@ export function AccountView({ sync, data, onChange }: Props) {
             get it.
           </p>
         )}
-        {claudeSettings}
         {relaySettings}
         {dataSettings}
       </section>
@@ -204,56 +201,9 @@ export function AccountView({ sync, data, onChange }: Props) {
       ) : (
         <button onClick={() => setCreated(newSecretKey().nsec)}>Create a key</button>
       )}
-
-      {claudeSettings}
       {relaySettings}
       {dataSettings}
     </section>
-  );
-}
-
-/** The user's own Anthropic API key, which suggesting categories for untagged merchants uses. */
-function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (data: BudgetData) => void; signedIn: boolean }) {
-  const [key, setKey] = useState('');
-  const { anthropicKey: saved, ...rest } = data;
-
-  return (
-    <>
-      <h3>Dad's tag suggestions</h3>
-      <p className="muted small">
-        Your API key is kept with your budget
-        {signedIn ? ', encrypted on your relays, so it works on your other devices too' : ' on this device'}.
-      </p>
-      {saved ? (
-        <div className="actions saved-key">
-          <code>
-            {saved.slice(0, 10)}…{saved.slice(-4)}
-          </code>
-          <button onClick={() => onChange(rest)}>Remove key</button>
-        </div>
-      ) : (
-        <form
-          className="signin"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onChange({ ...data, anthropicKey: key.trim() });
-            setKey('');
-          }}
-        >
-          <input
-            type="password"
-            autoComplete="off"
-            placeholder="sk-ant-…"
-            aria-label="Anthropic API key"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-          />
-          <button type="submit" disabled={!key.trim().startsWith('sk-ant-')}>
-            Save key
-          </button>
-        </form>
-      )}
-    </>
   );
 }
 

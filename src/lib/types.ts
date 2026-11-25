@@ -62,8 +62,6 @@ export interface BudgetData {
   budgets?: Record<string, Record<string, number>>;
   /** Balance before the first transaction, in pence, typed in by the user for the running balance in downloads. */
   openingBalance?: number;
-  /** The user's own Anthropic API key, for suggesting categories for untagged merchants. */
-  anthropicKey?: string;
   /**
    * Categories the user removed or renamed away, so that combining with another device or the
    * relays doesn't bring them back. Adding a category again takes it off this list.

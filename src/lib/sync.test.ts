@@ -183,14 +183,6 @@ describe('opening balance sync', () => {
   });
 });
 
-describe('API key sync', () => {
-  it('round-trips the API key and takes it from the other device when this one has none', () => {
-    const saved = data([tx('a', '2026-05-01')], { anthropicKey: 'sk-ant-x' });
-    expect(fromChunks(toChunks(saved))).toMatchObject({ anthropicKey: 'sk-ant-x' });
-    expect(mergeData(data([tx('a', '2026-05-01')]), data([], { anthropicKey: 'sk-ant-x' })).anthropicKey).toBe('sk-ant-x');
-  });
-});
-
 describe('latestByTag', () => {
   it('keeps the newest event per tag and ignores other apps', () => {
     const e = (d: string, created_at: number) => ({ id: d + created_at, pubkey: '', sig: '', kind: 30078, content: '', created_at, tags: [['d', d]] });
