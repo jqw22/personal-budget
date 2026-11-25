@@ -684,13 +684,12 @@ table.types button:disabled {
   font-size: 11px;
 }
 
-/* One table: the year's budget, the actual months and the forecast, then the year's total and average.
-   It's only as wide as its figures need rather than stretching to fill the page. */
-/* Every month column is exactly the same width, so the months line up evenly. The table is always
-   twelve months, four figure columns and three separators wide. */
+/* One table: the year's plan, the actual months and the planned ones, then the year's total and
+   under/over. Every month column is exactly the same width, so the months line up evenly. The table
+   is always twelve months, three figure columns and three separators wide. */
 table.summary.combined {
   table-layout: fixed;
-  width: calc(var(--frozen-category) + 12 * var(--month) + 4 * var(--frozen-figure) + 3 * var(--gap) + 2px);
+  width: calc(var(--frozen-category) + 12 * var(--month) + 3 * var(--frozen-figure) + 3 * var(--gap) + 10px);
   min-width: 0;
 }
 
@@ -702,7 +701,7 @@ table.summary.combined col.category-col {
   width: var(--frozen-category);
 }
 
-table.summary.combined :is(col.budget-col, col.diff-col, col.ytd-col, col.avg-col) {
+table.summary.combined :is(col.budget-col, col.diff-col, col.ytd-col) {
   width: var(--frozen-figure);
 }
 
@@ -711,7 +710,13 @@ table.summary.combined :is(col.budget-col, col.ytd-col) {
   width: calc(var(--frozen-figure) + var(--gap));
 }
 
-table.summary.combined col.category-col + col {
+/* "Under/Over" needs a little more room than a figure. */
+table.summary.combined col.diff-col {
+  width: calc(var(--frozen-figure) + 8px);
+}
+
+/* January opens with the separator after Planned. */
+table.summary.combined col.budget-col + col {
   width: calc(var(--month) + var(--gap));
 }
 
@@ -726,18 +731,19 @@ table.summary.combined :is(th, td):is(.budget-col, .diff-col) {
   background: var(--avg);
 }
 
-/* Total and Average stay white, like the actual months. */
-table.summary.combined :is(th, td):is(.ytd-col, .avg-col) {
+/* Total stays white, like the actual months. */
+table.summary.combined :is(th, td).ytd-col {
   background: var(--surface);
 }
 
-table.summary.combined tr.subtotal th:is(.ytd-col, .avg-col) {
+table.summary.combined tr.subtotal th.ytd-col {
   background: var(--bg);
 }
 
-/* White separator columns: after the category names, after December and before the budget. */
+/* White separator columns: after the category names, after Planned (before January) and after December. */
 table.summary.combined tr > :first-child:not([colspan]) + *,
-table.summary.combined :is(th, td):is(.ytd-col, .budget-col, .ytd-start, .budget-start) {
+table.summary.combined :is(.budget-col, .budget-start) + *,
+table.summary.combined :is(th, td):is(.ytd-col, .ytd-start) {
   /* About a quarter of a month column. */
   border-left: var(--gap) solid var(--surface);
 }
