@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccountView, syncLabel } from './components/AccountView';
 import { isTagged } from './lib/splits';
+import { PlanningView } from './components/PlanningView';
 import { RulesView } from './components/RulesView';
 import { SummaryView } from './components/SummaryView';
 import { TransactionsView, UNTAGGED_FILTER, type TransactionFilter } from './components/TransactionsView';
@@ -9,7 +10,7 @@ import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
 import { useSync } from './lib/useSync';
 
-type Tab = 'summary' | 'transactions' | 'categories' | 'rules' | 'account';
+type Tab = 'summary' | 'transactions' | 'planning' | 'categories' | 'rules' | 'account';
 
 export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
@@ -32,7 +33,7 @@ export function App() {
   const untagged = data.transactions.filter((t) => !isTagged(t)).length;
 
   return (
-    <div className={`app ${tab === 'summary' ? 'wide' : ''}`}>
+    <div className={`app ${tab === 'summary' || tab === 'planning' ? 'wide' : ''}`}>
       <header>
         <div>
           <h1>
@@ -48,6 +49,9 @@ export function App() {
           </button>
           <button className={tab === 'transactions' ? 'active' : ''} onClick={() => openTab('transactions')}>
             Transactions{untagged > 0 && <span className="badge">{untagged}</span>}
+          </button>
+          <button className={tab === 'planning' ? 'active' : ''} onClick={() => openTab('planning')}>
+            Planning
           </button>
           <button className={tab === 'categories' ? 'active' : ''} onClick={() => openTab('categories')}>
             Categories
@@ -96,6 +100,7 @@ export function App() {
             }}
           />
         )}
+        {tab === 'planning' && <PlanningView data={data} />}
         {tab === 'categories' && <RulesView data={data} onChange={setData} part="categories" />}
         {tab === 'rules' && <RulesView data={data} onChange={setData} part="rules" focusRule={focusRule} />}
         {tab === 'account' && <AccountView sync={sync} onChange={setData} />}
