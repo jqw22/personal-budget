@@ -28,6 +28,9 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
   const [saveResults, setSaveResults] = useState<Map<string, SaveResult>>(new Map());
   const [checks, setChecks] = useState<RelayCheck[] | null>(null);
   const [checking, setChecking] = useState(false);
+  const [filling, setFilling] = useState(false);
+  /** How many records each relay took in the last fill. */
+  const [filled, setFilled] = useState<Map<string, number> | null>(null);
   // Saving waits until relay data has been loaded and merged, so it can't overwrite it.
   const loaded = useRef(false);
   const latest = useRef(data);
@@ -75,6 +78,8 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
     setSaveResults(new Map());
     setChecks(null);
     setChecking(false);
+    setFilled(null);
+    setFilling(false);
     sync.current = current;
     setSigner(next);
     setState({ status: 'loading' });
@@ -119,6 +124,21 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
     /** Asks each relay on its own what it holds. */
     async checkRelays() {
       if (sync.current && loaded.current) await runCheck(sync.current);
+    },
+    filling,
+    filled,
+    /** Copies records to the relays missing them (or holding older versions), then checks again. */
+    async fillRelays() {
+      const current = sync.current;
+      if (!current || !loaded.current) return;
+      setFilling(true);
+      try {
+        const result = await current.fill();
+        if (sync.current === current) setFilled(result);
+      } finally {
+        if (sync.current === current) setFilling(false);
+      }
+      if (sync.current === current) await runCheck(current);
     },
     async signInWithExtension() {
       const next = await extensionSigner();

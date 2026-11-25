@@ -266,7 +266,10 @@ function refusal(error: string): string {
 
 /** One row per relay: whether it's reachable, what it serves back, and how it took the last save. */
 function RelayTable({ sync }: { sync: Props['sync'] }) {
-  const { account, checks, checking, saveResults, state, checkRelays } = sync;
+  const { account, checks, checking, saveResults, state, checkRelays, filling, filled, fillRelays } = sync;
+  // A relay that's reachable but missing records, or holding older ones, can be filled in from the others.
+  const gaps = checks?.some((c) => c.connected && (c.held < c.expected || c.behind > 0)) ?? false;
+  const filledCount = filled ? [...filled.values()].reduce((t, n) => t + n, 0) : 0;
   const ready = state.status === 'saved' || state.status === 'saving' || state.status === 'error';
 
   return (
@@ -322,6 +325,20 @@ function RelayTable({ sync }: { sync: Props['sync'] }) {
         <button onClick={() => void checkRelays()} disabled={checking || !ready}>
           {checking ? 'Checking…' : 'Check relays'}
         </button>
+        {(gaps || filling) && (
+          <button
+            title="Send each relay the records it's missing, copied from the relays that have them"
+            onClick={() => void fillRelays()}
+            disabled={checking || filling || !ready}
+          >
+            {filling ? 'Sending…' : 'Send missing records'}
+          </button>
+        )}
+        {filled && !filling && !checking && (
+          <span className="muted">
+            {filledCount ? `Sent ${filledCount} record${filledCount === 1 ? '' : 's'}.` : 'Nothing was sent: the relays refused or already had them.'}
+          </span>
+        )}
       </div>
     </>
   );

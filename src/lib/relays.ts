@@ -97,6 +97,35 @@ export class RelaySync {
     );
   }
 
+  /**
+   * Copies records to relays that are missing them or hold an older version: the newest copy of
+   * each record any relay has is sent, exactly as it was signed, to each relay without it. Nothing
+   * is encrypted or dated afresh, so it isn't a new save and other devices see no change. Returns
+   * how many records each relay accepted.
+   */
+  fill(): Promise<Map<string, number>> {
+    return this.enqueue(async () => {
+      const all = await this.pool.querySync(this.relays, this.filter(), { maxWait: 6000 });
+      const newest = latestByTag(all);
+      const filled = new Map<string, number>();
+      await Promise.all(
+        this.relays.map(async (url) => {
+          filled.set(url, 0);
+          try {
+            await this.pool.ensureRelay(url, { connectionTimeout: 5000 });
+          } catch {
+            return;
+          }
+          const held = latestByTag(await this.pool.querySync([url], this.filter(), { maxWait: 6000 }));
+          const missing = [...newest].filter(([d, event]) => (held.get(d)?.created_at ?? 0) < event.created_at).map(([, event]) => event);
+          const answers = await Promise.allSettled(missing.map((event) => this.pool.publish([url], event, { maxWait: 6000 })[0]));
+          filled.set(url, answers.filter((a) => a.status === 'fulfilled').length);
+        }),
+      );
+      return filled;
+    });
+  }
+
   private filter(since?: number) {
     return { kinds: [KIND], authors: [this.signer.pubkey], ...(since ? { since } : {}) };
   }
