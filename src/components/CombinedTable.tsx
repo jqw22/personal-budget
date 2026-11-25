@@ -5,6 +5,7 @@ import { incomeCategories, typeList, type BudgetData } from '../lib/types';
 import { addCategory, categoryUse, removeCategory, setArchived } from '../lib/store';
 import { BalanceChart, type ChartColumn } from './BalanceChart';
 import { MoneyInput, net, shortMonth } from './forecastParts';
+import { inYear } from '../lib/yearTotals';
 import { expandSplits } from '../lib/splits';
 
 interface Props {
@@ -29,21 +30,6 @@ interface Props {
 function colMonth(m: string): string {
   const [name, year] = shortMonth(m).split(' ');
   return m.endsWith('-01') ? `${name} ${year}` : name;
-}
-
-/** Just the forecast months in `year`: next year's forecast is worked out from the rest of this one, then trimmed. */
-function inYear(fc: ReturnType<typeof forecastFrom>, year: string): ReturnType<typeof forecastFrom> {
-  const from = fc.months.findIndex((m) => m.startsWith(year));
-  if (from <= 0) return fc;
-  return {
-    ...fc,
-    months: fc.months.slice(from),
-    incomeRows: fc.incomeRows.map((r) => ({ ...r, amounts: r.amounts.slice(from) })),
-    income: fc.income.slice(from),
-    rows: fc.rows.map((r) => ({ ...r, amounts: r.amounts.slice(from) })),
-    totals: fc.totals.slice(from),
-    closing: fc.closing.slice(from),
-  };
 }
 
 /** The year's budget, the actual months and the forecast, then this year so far and its monthly average, in one table with a row per category. */
@@ -104,23 +90,10 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
 
   const budgets = data.budgets?.[year] ?? {};
   const budget = (row: string) => budgets[row] ?? 0;
-  function setBudget(row: string, pence: number | null) {
-    const rows = { ...budgets };
-    if (pence === null || pence === 0) delete rows[row];
-    else rows[row] = pence;
-    const next = { ...data.budgets, [year]: rows };
-    if (Object.keys(rows).length === 0) delete next[year];
-    onChange({ ...data, budgets: next });
-  }
+  // Planned figures are typed in on the Planning tab; here they're shown as they are.
   const budgetCell = (row: string) => (
-    <td className="num budget-col">
-      <MoneyInput
-        value={budget(row)}
-        edited={budgets[row] !== undefined}
-        label={`${row} planned, ${year}`}
-        hint={`What you plan for ${row} in ${year}. Type to change it.`}
-        onCommit={(p) => setBudget(row, p)}
-      />
+    <td className="num budget-col" title={`Planned for ${row} in ${year}. Change it on the Planning tab.`}>
+      {formatPounds(budget(row))}
     </td>
   );
 

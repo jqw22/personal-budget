@@ -1173,3 +1173,34 @@ table.summary.combined tr.add-row input {
     display: none !important;
   }
 }
+
+/* Planning: two years side by side, Planned (typed in) / Actual / Diff for each. */
+table.summary.planning {
+  width: auto;
+  margin: 0 auto;
+}
+
+table.summary.planning :is(th, td) {
+  min-width: 84px;
+}
+
+table.summary.planning :is(th, td):first-child {
+  min-width: 150px;
+}
+
+table.summary.planning .year-start {
+  border-left: 15px solid var(--surface);
+}
+
+table.summary.planning .plan-col {
+  background: var(--avg);
+}
+
+table.summary.planning tr.subtotal th.plan-col,
+table.summary.planning tfoot th.plan-col {
+  background: var(--avg);
+}
+
+table.summary.planning tr.gap-row td {
+  height: 18px;
+}

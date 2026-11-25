@@ -100,7 +100,7 @@ export function App() {
             }}
           />
         )}
-        {tab === 'planning' && <PlanningView data={data} />}
+        {tab === 'planning' && <PlanningView data={data} onChange={setData} />}
         {tab === 'categories' && <RulesView data={data} onChange={setData} part="categories" />}
         {tab === 'rules' && <RulesView data={data} onChange={setData} part="rules" focusRule={focusRule} />}
         {tab === 'account' && <AccountView sync={sync} onChange={setData} />}
