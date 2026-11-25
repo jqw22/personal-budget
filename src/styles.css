@@ -1290,3 +1290,27 @@ table.summary.planning thead th {
 table.summary.planning thead th.plan-col {
   background: var(--avg);
 }
+
+/* Planned columns look like the summary's planned months: pink, with figures that read like text
+   until pointed at or typed in. */
+table.summary.planning .plan-col,
+table.summary.planning thead th.plan-col,
+table.summary.planning tr.subtotal th.plan-col,
+table.summary.planning tfoot th.plan-col {
+  background: var(--forecast);
+}
+
+table.summary.planning td.plan-col input.forecast-input,
+table.summary.planning td.plan-col input.forecast-input.edited {
+  padding: 0 2px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: inherit;
+}
+
+table.summary.planning td.plan-col input.forecast-input:is(:hover, :focus) {
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--text);
+}
