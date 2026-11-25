@@ -1204,3 +1204,8 @@ table.summary.planning tfoot th.plan-col {
 table.summary.planning tr.gap-row td {
   height: 18px;
 }
+
+/* A wider gap between the two years. */
+table.summary.planning .year-start ~ .year-start {
+  border-left-width: 45px;
+}
