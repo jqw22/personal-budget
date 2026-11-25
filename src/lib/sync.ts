@@ -3,8 +3,7 @@ import type { Event } from 'nostr-tools';
 import { withSplit } from './splits';
 import { applyRules } from './rules';
 import { migrate } from './store';
-import { NOT_SPENDING } from './summary';
-import { DEFAULT_CATEGORIES, typeList, type BudgetData, type Rule, type Transaction } from './types';
+import { DEFAULT_CATEGORIES, isIncomeType, typeList, type BudgetData, type Rule, type Transaction } from './types';
 
 /** NIP-78 application data: addressable events, one per `d` tag, each replacing the last. */
 export const KIND = 30078;
@@ -18,7 +17,7 @@ const SETTINGS = `${PREFIX}settings`;
 const PART_BYTES = 20000;
 
 function settingsJson(data: BudgetData): string {
-  return JSON.stringify({ version: data.version, categories: data.categories, types: data.types, categoryTypes: data.categoryTypes, deletedTypes: data.deletedTypes, noForecastTypes: data.noForecastTypes, rules: data.rules, forecast: data.forecast, budgets: data.budgets, openingBalance: data.openingBalance, goals: data.goals, anthropicKey: data.anthropicKey, insight: data.insight, deletedCategories: data.deletedCategories });
+  return JSON.stringify({ version: data.version, categories: data.categories, types: data.types, incomeGroups: data.incomeGroups, categoryTypes: data.categoryTypes, deletedTypes: data.deletedTypes, noForecastTypes: data.noForecastTypes, rules: data.rules, forecast: data.forecast, budgets: data.budgets, openingBalance: data.openingBalance, goals: data.goals, anthropicKey: data.anthropicKey, insight: data.insight, deletedCategories: data.deletedCategories });
 }
 
 export function isOurs(d: string): boolean {
@@ -69,7 +68,7 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     transactions.push(...(JSON.parse(plaintext).transactions as Transaction[]));
   }
   if (!settings && transactions.length === 0) return null;
-  const { version, categories, essential, living, types, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, goals, anthropicKey, insight, deletedCategories } = settings
+  const { version, categories, essential, living, types, incomeGroups, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, goals, anthropicKey, insight, deletedCategories } = settings
     ? JSON.parse(settings)
     : { version: undefined, categories: [], rules: [] };
   return migrate({
@@ -78,6 +77,7 @@ export function fromChunks(chunks: Map<string, string>): BudgetData | null {
     ...(essential ? { essential } : {}),
     ...(living ? { living } : {}),
     ...(types ? { types } : {}),
+    ...(incomeGroups ? { incomeGroups } : {}),
     ...(categoryTypes ? { categoryTypes } : {}),
     ...(deletedTypes?.length ? { deletedTypes } : {}),
     ...(noForecastTypes ? { noForecastTypes } : {}),
@@ -130,8 +130,7 @@ function isUntouched(data: BudgetData): boolean {
  * device's rule wins where both match the same merchant, and the newer insights review is kept.
  */
 function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
-  // Income and Transfers are built in, so neither device can have deleted them.
-  const deleted = new Set([...(local.deletedCategories ?? []), ...(remote.deletedCategories ?? [])].filter((c) => !NOT_SPENDING.includes(c)));
+  const deleted = new Set([...(local.deletedCategories ?? []), ...(remote.deletedCategories ?? [])]);
   const kept = (c: string) => !deleted.has(c);
   const rules: Rule[] = [...local.rules];
   const known = new Set(local.rules.map((r) => r.match.toUpperCase()));
@@ -158,7 +157,7 @@ function mergeSettings(local: BudgetData, remote: BudgetData): BudgetData {
  * Both sides' types, in this device's order with the other device's new ones after, less any either side removed.
  * Each category keeps this device's type where it has one.
  */
-function mergeTypes(local: BudgetData, remote: BudgetData, kept: (c: string) => boolean): Pick<BudgetData, 'types' | 'categoryTypes' | 'deletedTypes' | 'noForecastTypes'> {
+function mergeTypes(local: BudgetData, remote: BudgetData, kept: (c: string) => boolean): Pick<BudgetData, 'types' | 'incomeGroups' | 'categoryTypes' | 'deletedTypes' | 'noForecastTypes'> {
   const deletedTypes = [...new Set([...(local.deletedTypes ?? []), ...(remote.deletedTypes ?? [])])];
   const types = [...new Set([...typeList(local), ...typeList(remote)])].filter((t) => !deletedTypes.includes(t));
   const categoryTypes = Object.fromEntries(
@@ -166,7 +165,11 @@ function mergeTypes(local: BudgetData, remote: BudgetData, kept: (c: string) => 
   );
   // Which types are forecast is one choice, so this device's stands once it has made it.
   const noForecastTypes = (local.noForecastTypes ?? remote.noForecastTypes)?.filter((t) => types.includes(t));
-  return { types: types.length ? types : typeList(local), categoryTypes, deletedTypes, ...(noForecastTypes ? { noForecastTypes } : {}) };
+  // Each group keeps this device's kind; groups only the other device has keep theirs.
+  const incomeGroups = (types.length ? types : typeList(local)).filter((t) =>
+    typeList(local).includes(t) ? isIncomeType(local, t) : isIncomeType(remote, t),
+  );
+  return { types: types.length ? types : typeList(local), incomeGroups, categoryTypes, deletedTypes, ...(noForecastTypes ? { noForecastTypes } : {}) };
 }
 
 /** Both sides' forecast (or budget) figures; this device's wins where both set the same month (or year) and row. */
@@ -186,7 +189,7 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
   // A device that has never been used only has the starting categories, so it takes the saved ones
   // as they are rather than adding back defaults the user removed or renamed.
   if (isUntouched(local)) return remote;
-  const { categories, types, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, goals, anthropicKey, insight, deletedCategories } = mergeSettings(local, remote);
+  const { categories, types, incomeGroups, categoryTypes, deletedTypes, noForecastTypes, rules, forecast, budgets, openingBalance, goals, anthropicKey, insight, deletedCategories } = mergeSettings(local, remote);
   const byId = new Map(local.transactions.map((t) => [t.id, t]));
   for (const t of remote.transactions) {
     const mine = byId.get(t.id);
@@ -198,6 +201,7 @@ export function mergeData(local: BudgetData, remote: BudgetData): BudgetData {
     version: Math.max(local.version ?? 1, remote.version ?? 1),
     categories,
     types,
+    ...(incomeGroups ? { incomeGroups } : {}),
     categoryTypes,
     ...(deletedTypes?.length ? { deletedTypes } : {}),
     ...(noForecastTypes ? { noForecastTypes } : {}),
@@ -235,10 +239,12 @@ export function applyRemote(local: BudgetData, base: Map<string, string>, incomi
   let next = local;
   const settings = incoming.get(SETTINGS);
   if (settings) {
-    const remote = { ...local, ...JSON.parse(settings) } as BudgetData;
+    const parsed = JSON.parse(settings) as BudgetData;
+    // Settings saved by an older version are upgraded first, so they have this version's groups.
+    const remote = (parsed.version ?? 1) < (local.version ?? 1) ? migrate({ ...local, ...parsed, version: parsed.version ?? 1 }) : ({ ...local, ...parsed } as BudgetData);
     const unchangedHere = !base.has(SETTINGS) || base.get(SETTINGS) === settingsJson(local);
     next = unchangedHere
-      ? { ...local, categories: remote.categories, types: remote.types, categoryTypes: remote.categoryTypes, deletedTypes: remote.deletedTypes, noForecastTypes: remote.noForecastTypes, rules: remote.rules, forecast: remote.forecast, budgets: remote.budgets, openingBalance: remote.openingBalance, goals: remote.goals, anthropicKey: remote.anthropicKey, insight: remote.insight, deletedCategories: remote.deletedCategories }
+      ? { ...local, categories: remote.categories, types: remote.types, incomeGroups: remote.incomeGroups, categoryTypes: remote.categoryTypes, deletedTypes: remote.deletedTypes, noForecastTypes: remote.noForecastTypes, rules: remote.rules, forecast: remote.forecast, budgets: remote.budgets, openingBalance: remote.openingBalance, goals: remote.goals, anthropicKey: remote.anthropicKey, insight: remote.insight, deletedCategories: remote.deletedCategories }
       : mergeSettings(local, remote);
   }
 

@@ -170,7 +170,7 @@ describe('category type sync', () => {
     const settings = JSON.parse(old.get('personal-budget:settings')!);
     old.set('personal-budget:settings', JSON.stringify({ ...settings, essential: ['Rent & bills'] }));
     const back = fromChunks(old)!;
-    expect(back.types).toEqual(['Essential', 'Living', 'Discretionary']);
+    expect(back.types).toEqual(['Income', 'Essential', 'Living', 'Discretionary']);
     expect(back.categoryTypes).toEqual({ 'Rent & bills': 'Essential', 'Going Out': 'Discretionary' });
   });
 });

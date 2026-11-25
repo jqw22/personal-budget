@@ -1,16 +1,37 @@
 import { useEffect, useState } from 'react';
 import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
-import { addType, moveType, removeType, renameCategory, renameType, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
-import { categoryType, typeList } from '../lib/types';
-import { NOT_SPENDING } from '../lib/summary';
+import { addType, moveType, removeType, renameCategory, renameType, setCategoryType, setTypeIncome, sortedCategories, forgetDeleted } from '../lib/store';
+import { categoryType, incomeTypes, isIncomeType, spendingTypes, typeList } from '../lib/types';
 import type { BudgetData, Rule } from '../lib/types';
+
+/** Every group as a dropdown option, Income groups then Spending groups. */
+function GroupOptions({ data }: { data: BudgetData }) {
+  return (
+    <>
+      {[
+        { label: 'Income', list: incomeTypes(data) },
+        { label: 'Spending', list: spendingTypes(data) },
+      ]
+        .filter((g) => g.list.length > 0)
+        .map((g) => (
+          <optgroup key={g.label} label={g.label}>
+            {g.list.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+    </>
+  );
+}
 
 
 interface Props {
   data: BudgetData;
   onChange: (data: BudgetData) => void;
-  /** The Categories tab (categories and types) or the Rules tab (merchant rules). */
+  /** The Categories tab (groups and categories) or the Rules tab (merchant rules). */
   part: 'categories' | 'rules';
   /** A rule to bring into view and highlight, e.g. after clicking "auto" on a transaction. */
   focusRule?: string | null;
@@ -20,6 +41,7 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
   const [newCategory, setNewCategory] = useState('');
   const [newType, setNewType] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeIncome, setNewTypeIncome] = useState(false);
   const [editingType, setEditingType] = useState<{ from: string; to: string } | null>(null);
   const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
@@ -55,7 +77,8 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
   function addNewType() {
     const name = newTypeName.trim();
     if (!name || types.includes(name)) return;
-    onChange(addType(data, name));
+    onChange(addType(data, name, newTypeIncome));
+    setNewTypeIncome(false);
     setNewTypeName('');
   }
 
@@ -87,31 +110,119 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
   }
 
   const types = typeList(data);
-  // Not spending (Income, Transfers) at the top, then each spending type in the types' order, each A to Z.
+  // Income groups' categories at the top, then each Spending group's, in the groups' order, each A to Z.
   const sorted = sortedCategories(data.categories);
-  const categories = [
-    ...sorted.filter((c) => NOT_SPENDING.includes(c)),
-    ...types.flatMap((type) => sorted.filter((c) => !NOT_SPENDING.includes(c) && categoryType(data, c) === type)),
-  ];
+  const categories = [...incomeTypes(data), ...spendingTypes(data)].flatMap((type) => sorted.filter((c) => categoryType(data, c) === type));
   const counts = new Map<string, number>();
   for (const t of expandSplits(data.transactions)) if (t.category) counts.set(t.category, (counts.get(t.category) ?? 0) + 1);
   const rulesFor = (c: string) => data.rules.filter((r) => r.category === c).length;
   const inUse = (c: string) => (counts.get(c) ?? 0) > 0 || rulesFor(c) > 0;
-  const spending = data.categories.filter((c) => !NOT_SPENDING.includes(c));
-  const categoriesOfType = (type: string) => spending.filter((c) => categoryType(data, c) === type).length;
+  const categoriesOfType = (type: string) => data.categories.filter((c) => categoryType(data, c) === type).length;
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
   return (
     <section>
       {part === 'categories' && (
         <>
+        <h2>Groups</h2>
+        <p className="muted">
+          Income groups are money in; Spending groups are money out. The summary shows Income groups first, then Spending
+          groups, each in this order. Click a group's name to rename it.
+        </p>
+        <table className="categories types">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Kind</th>
+              <th className="num">Categories</th>
+              <th>Order</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {types.map((type, i) => (
+              <tr key={type}>
+                <td>
+                  {editingType?.from === type ? (
+                    <input
+                      autoFocus
+                      aria-label={`Rename ${type}`}
+                      value={editingType.to}
+                      onChange={(e) => setEditingType({ from: type, to: e.target.value })}
+                      onBlur={finishTypeRename}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') finishTypeRename();
+                        if (e.key === 'Escape') setEditingType(null);
+                      }}
+                    />
+                  ) : (
+                    <button className="link name" title={`Rename ${type}`} onClick={() => setEditingType({ from: type, to: type })}>
+                      {type}
+                    </button>
+                  )}
+                </td>
+                <td>
+                  <select
+                    aria-label={`Kind of ${type}`}
+                    value={isIncomeType(data, type) ? 'income' : 'spending'}
+                    onChange={(e) => onChange(setTypeIncome(data, type, e.target.value === 'income'))}
+                  >
+                    <option value="income">Income</option>
+                    <option value="spending">Spending</option>
+                  </select>
+                </td>
+                <td className="num muted">{categoriesOfType(type)}</td>
+                <td className="order">
+                  <button className="link" title={`Move ${type} up`} disabled={i === 0} onClick={() => onChange(moveType(data, type, -1))}>
+                    ↑
+                  </button>
+                  <button
+                    className="link"
+                    title={`Move ${type} down`}
+                    disabled={i === types.length - 1}
+                    onClick={() => onChange(moveType(data, type, 1))}
+                  >
+                    ↓
+                  </button>
+                </td>
+                <td>
+                  <button
+                    className="link"
+                    title={categoriesOfType(type) ? `Move ${type}'s categories to another group before removing it` : `Remove ${type}`}
+                    disabled={categoriesOfType(type) > 0 || types.length === 1}
+                    onClick={() => onChange(removeType(data, type))}
+                  >
+                    ×
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <form
+          className="inline"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addNewType();
+          }}
+        >
+          <input placeholder="New group" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} />
+          <select aria-label="New group kind" value={newTypeIncome ? 'income' : 'spending'} onChange={(e) => setNewTypeIncome(e.target.value === 'income')}>
+            <option value="spending">Spending</option>
+            <option value="income">Income</option>
+          </select>
+          <button type="submit" disabled={!newTypeName.trim() || types.includes(newTypeName.trim())}>
+            Add
+          </button>
+        </form>
+
         <h2>Categories</h2>
         <p className="muted">Click a category's name to rename it. Tagged transactions and rules follow the new name.</p>
         <table className="categories">
           <thead>
             <tr>
               <th>Category</th>
-              <th>Type</th>
+              <th>Group</th>
               <th className="num">Transactions</th>
               <th />
             </tr>
@@ -132,8 +243,6 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
                         if (e.key === 'Escape') setEditing(null);
                       }}
                     />
-                  ) : NOT_SPENDING.includes(c) ? (
-                    c
                   ) : (
                     <button className="link name" title={`Rename ${c}`} onClick={() => setEditing({ from: c, to: c })}>
                       {c}
@@ -141,34 +250,23 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
                   )}
                 </td>
                 <td>
-                  {NOT_SPENDING.includes(c) ? (
-                    <span className="muted">Not spending</span>
-                  ) : (
-                    <select
-                      aria-label={`Type of ${c}`}
-                      value={categoryType(data, c)}
-                      onChange={(e) => onChange(setType(data, c, e.target.value))}
-                    >
-                      {types.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  <select
+                    aria-label={`Group of ${c}`}
+                    value={categoryType(data, c)}
+                    onChange={(e) => onChange(setType(data, c, e.target.value))}
+                  >
+                    <GroupOptions data={data} />
+                  </select>
                 </td>
                 <td className="num muted">{counts.get(c) ?? 0}</td>
                 <td>
-                  {/* Income and Transfers are built in: the summary has rows of its own for them. */}
-                  {!NOT_SPENDING.includes(c) && (
-                    <button
-                      className="link"
-                      title={`Remove ${c}`}
-                      onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
-                    >
-                      ×
-                    </button>
-                  )}
+                  <button
+                    className="link"
+                    title={`Remove ${c}`}
+                    onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
+                  >
+                    ×
+                  </button>
                 </td>
               </tr>
             ))}
@@ -204,93 +302,13 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
           }}
         >
           <input placeholder="New category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
-          <select aria-label="New category type" required value={newType} onChange={(e) => setNewType(e.target.value)}>
+          <select aria-label="New category group" required value={newType} onChange={(e) => setNewType(e.target.value)}>
             <option value="" disabled>
-              Type…
+              Group…
             </option>
-            {types.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
+            <GroupOptions data={data} />
           </select>
           <button type="submit" disabled={!newCategory.trim() || !newType}>
-            Add
-          </button>
-        </form>
-
-        <h2>Types</h2>
-        <p className="muted">
-          The summary groups spending by type, in this order. Click a type's name to rename it.
-        </p>
-        <table className="categories types">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th className="num">Categories</th>
-              <th>Order</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {types.map((type, i) => (
-              <tr key={type}>
-                <td>
-                  {editingType?.from === type ? (
-                    <input
-                      autoFocus
-                      aria-label={`Rename ${type}`}
-                      value={editingType.to}
-                      onChange={(e) => setEditingType({ from: type, to: e.target.value })}
-                      onBlur={finishTypeRename}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') finishTypeRename();
-                        if (e.key === 'Escape') setEditingType(null);
-                      }}
-                    />
-                  ) : (
-                    <button className="link name" title={`Rename ${type}`} onClick={() => setEditingType({ from: type, to: type })}>
-                      {type}
-                    </button>
-                  )}
-                </td>
-                <td className="num muted">{categoriesOfType(type)}</td>
-                <td className="order">
-                  <button className="link" title={`Move ${type} up`} disabled={i === 0} onClick={() => onChange(moveType(data, type, -1))}>
-                    ↑
-                  </button>
-                  <button
-                    className="link"
-                    title={`Move ${type} down`}
-                    disabled={i === types.length - 1}
-                    onClick={() => onChange(moveType(data, type, 1))}
-                  >
-                    ↓
-                  </button>
-                </td>
-                <td>
-                  <button
-                    className="link"
-                    title={categoriesOfType(type) ? `Give ${type}'s categories another type before removing it` : `Remove ${type}`}
-                    disabled={categoriesOfType(type) > 0 || types.length === 1}
-                    onClick={() => onChange(removeType(data, type))}
-                  >
-                    ×
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <form
-          className="inline"
-          onSubmit={(e) => {
-            e.preventDefault();
-            addNewType();
-          }}
-        >
-          <input placeholder="New type" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} />
-          <button type="submit" disabled={!newTypeName.trim() || types.includes(newTypeName.trim())}>
             Add
           </button>
         </form>

@@ -55,9 +55,11 @@ export interface BudgetData {
   transactions: Transaction[];
   rules: Rule[];
   categories: string[];
-  /** The user's spending types (such as Essential), in the order the summary shows them. */
+  /** The user's groups (such as Income or Essential), in the order the summary shows them. The code calls them types. */
   types?: string[];
-  /** Each spending category's type, by category name. */
+  /** Groups whose categories are money in (Income kind) rather than spending. */
+  incomeGroups?: string[];
+  /** Each category's group, by category name. */
   categoryTypes?: Record<string, string>;
   /** Types left out of the forecast: their categories' forecast starts at £0 instead of the average. */
   noForecastTypes?: string[];
@@ -107,23 +109,53 @@ export const DEFAULT_CATEGORIES = [
   'Other',
 ];
 
-/** The spending types a new budget starts with, in the order the summary shows them. */
-export const DEFAULT_TYPES = ['Essential', 'Living', 'Discretionary'];
+/** The groups a new budget starts with, in the order the summary shows them. */
+export const DEFAULT_TYPES = ['Income', 'Essential', 'Living', 'Discretionary'];
+/** The Income-kind groups a new budget starts with. */
+export const DEFAULT_INCOME_GROUPS = ['Income'];
+/** Which group each starting category is in, where it isn't the last Spending group. */
+export const DEFAULT_CATEGORY_TYPES: Record<string, string> = { Income: 'Income', Transfers: 'Income' };
 
-/** The user's spending types, in their order. */
+/** The user's groups, in their order. */
 export function typeList(data: Pick<BudgetData, 'types'>): string[] {
   return data.types?.length ? data.types : DEFAULT_TYPES;
 }
 
-/** A spending category's type; one never given a type (or whose type was removed) counts as the last type. */
-export function categoryType(data: Pick<BudgetData, 'types' | 'categoryTypes'>, category: string): string {
+/** Whether a group's categories are money in rather than spending. */
+export function isIncomeType(data: Pick<BudgetData, 'types' | 'incomeGroups'>, type: string): boolean {
+  return (data.incomeGroups ?? DEFAULT_INCOME_GROUPS).includes(type);
+}
+
+/** The Income-kind groups, in order. */
+export function incomeTypes(data: Pick<BudgetData, 'types' | 'incomeGroups'>): string[] {
+  return typeList(data).filter((t) => isIncomeType(data, t));
+}
+
+/** The Spending-kind groups, in order. */
+export function spendingTypes(data: Pick<BudgetData, 'types' | 'incomeGroups'>): string[] {
+  return typeList(data).filter((t) => !isIncomeType(data, t));
+}
+
+/**
+ * A category's group; one never given a group (or whose group was removed) counts as the last
+ * Spending group.
+ */
+export function categoryType(data: Pick<BudgetData, 'types' | 'categoryTypes' | 'incomeGroups'>, category: string): string {
   const types = typeList(data);
-  const type = data.categoryTypes?.[category];
-  return type && types.includes(type) ? type : types[types.length - 1];
+  // Income and Transfers start in the Income group, even before being given one.
+  const type = data.categoryTypes?.[category] ?? DEFAULT_CATEGORY_TYPES[category];
+  if (type && types.includes(type)) return type;
+  const spending = spendingTypes(data);
+  return spending.at(-1) ?? types[types.length - 1];
+}
+
+/** Every category in an Income group: money in, left out of spending. */
+export function incomeCategories(data: Pick<BudgetData, 'categories' | 'types' | 'categoryTypes' | 'incomeGroups'>): string[] {
+  return data.categories.filter((c) => isIncomeType(data, categoryType(data, c)));
 }
 
 /** Spending categories whose type is left out of the forecast. */
-export function unforecastCategories(data: Pick<BudgetData, 'types' | 'categoryTypes' | 'noForecastTypes'>, categories: string[]): string[] {
+export function unforecastCategories(data: Pick<BudgetData, 'types' | 'categoryTypes' | 'noForecastTypes' | 'incomeGroups'>, categories: string[]): string[] {
   const off = data.noForecastTypes ?? [];
   return off.length ? categories.filter((c) => off.includes(categoryType(data, c))) : [];
 }

@@ -1,6 +1,9 @@
-import { categoryType, typeList, type BudgetData, type Transaction } from './types';
+import { categoryType, incomeTypes, spendingTypes, type BudgetData, type Transaction } from './types';
 
-/** Categories that move money around rather than spend it, so they're left out of spending totals. */
+/**
+ * The income categories a new budget starts with. Callers pass the user's own (every category in an
+ * Income group, see incomeCategories); these are only the default.
+ */
 export const NOT_SPENDING = ['Transfers', 'Income'];
 
 export const UNTAGGED = 'Untagged';
@@ -25,11 +28,11 @@ export function monthsWithData(transactions: Transaction[]): string[] {
  * Spending per category for one month, in pence. Untagged money coming in is
  * left out, since it's usually income or a transfer rather than a refund.
  */
-function spendingByCategory(transactions: Transaction[], month: string): Map<string, number> {
+function spendingByCategory(transactions: Transaction[], month: string, income: string[]): Map<string, number> {
   const totals = new Map<string, number>();
   for (const t of transactions) {
     if (!t.date.startsWith(month)) continue;
-    if (t.category && NOT_SPENDING.includes(t.category)) continue;
+    if (t.category && income.includes(t.category)) continue;
     if (!t.category && t.amount > 0) continue;
     const key = t.category ?? UNTAGGED;
     totals.set(key, (totals.get(key) ?? 0) - t.amount);
@@ -50,48 +53,52 @@ export interface CategoryHistory {
   rows: { category: string; amounts: number[]; ytd: number }[];
   /** Total spending per month, in pence. */
   totals: number[];
-  /** Money tagged as Income per month, in pence. */
+  /** Net money per income category (every category in an Income group), one amount per month, positive when more came in. */
+  incomeRows: { category: string; amounts: number[]; ytd: number }[];
+  /** Net money in all income categories per month, in pence. */
   income: number[];
-  /** Net money tagged as Transfers per month, in pence: positive when more came in than went out. */
-  transfers: number[];
   /** Calendar year to date, up to and including the last month shown. */
   ytd: {
     /** Months this year with any transactions, which the monthly averages divide by. */
     months: number;
     total: number;
     income: number;
-    transfers: number;
   };
 }
 
 /** Spending per category for `count` months ending at `endMonth`, oldest month first, plus the year so far. */
-export function categoryHistory(transactions: Transaction[], endMonth: string, count: number): CategoryHistory {
+export function categoryHistory(transactions: Transaction[], endMonth: string, count: number, incomeCategories: string[] = NOT_SPENDING): CategoryHistory {
   const months = [endMonth];
   while (months.length < count) months.unshift(previousMonth(months[0]));
-  const perMonth = months.map((m) => spendingByCategory(transactions, m));
+  const perMonth = months.map((m) => spendingByCategory(transactions, m, incomeCategories));
 
   const year = endMonth.slice(0, 4);
   const thisYear = transactions.filter((t) => t.date.startsWith(year) && t.date.slice(0, 7) <= endMonth);
   const ytdMonths = new Set(thisYear.map((t) => t.date.slice(0, 7)));
   const ytd = new Map<string, number>();
-  for (const m of ytdMonths) for (const [c, v] of spendingByCategory(thisYear, m)) ytd.set(c, (ytd.get(c) ?? 0) + v);
+  for (const m of ytdMonths) for (const [c, v] of spendingByCategory(thisYear, m, incomeCategories)) ytd.set(c, (ytd.get(c) ?? 0) + v);
 
   const categories = new Set([...perMonth.flatMap((totals) => [...totals.keys()]), ...ytd.keys()]);
   const rows = [...categories]
     .map((category) => ({ category, amounts: perMonth.map((totals) => totals.get(category) ?? 0), ytd: ytd.get(category) ?? 0 }))
     // Biggest spend this year so far first, then in the latest month.
     .sort((a, b) => b.ytd - a.ytd || b.amounts[count - 1] - a.amounts[count - 1]);
-  const incomeIn = (list: Transaction[]) => sum(list.filter((t) => t.category === 'Income').map((t) => t.amount));
-  const income = months.map((m) => incomeIn(transactions.filter((t) => t.date.startsWith(m))));
-  const transfersIn = (list: Transaction[]) => sum(list.filter((t) => t.category === 'Transfers').map((t) => t.amount));
-  const transfers = months.map((m) => transfersIn(transactions.filter((t) => t.date.startsWith(m))));
+  const netIn = (list: Transaction[], category: string) => sum(list.filter((t) => t.category === category).map((t) => t.amount));
+  const shown = transactions.filter((t) => t.date.slice(0, 7) >= months[0] && t.date.slice(0, 7) <= endMonth);
+  const incomeRows = incomeCategories
+    .filter((c) => shown.some((t) => t.category === c) || thisYear.some((t) => t.category === c))
+    .map((category) => ({
+      category,
+      amounts: months.map((m) => netIn(shown.filter((t) => t.date.startsWith(m)), category)),
+      ytd: netIn(thisYear, category),
+    }));
   return {
     months,
     rows,
     totals: perMonth.map((totals) => sum(totals.values())),
-    income,
-    transfers,
-    ytd: { months: ytdMonths.size, total: sum(ytd.values()), income: incomeIn(thisYear), transfers: transfersIn(thisYear) },
+    incomeRows,
+    income: months.map((_, i) => sum(incomeRows.map((r) => r.amounts[i]))),
+    ytd: { months: ytdMonths.size, total: sum(ytd.values()), income: sum(incomeRows.map((r) => r.ytd)) },
   };
 }
 
@@ -109,15 +116,25 @@ export interface SpendingGroup<R> {
   rows: R[];
 }
 
-/** Splits spending rows by type, in the user's type order, each A to Z, then untagged. */
-export function groupSpending<R extends { category: string }>(rows: R[], types: Pick<BudgetData, 'types' | 'categoryTypes'>): SpendingGroup<R>[] {
+type GroupSettings = Pick<BudgetData, 'types' | 'categoryTypes' | 'incomeGroups'>;
+
+/** Splits spending rows by group, in the user's order of Spending groups, each A to Z, then untagged. */
+export function groupSpending<R extends { category: string }>(rows: R[], types: GroupSettings): SpendingGroup<R>[] {
   const byName = (a: R, b: R) => a.category.localeCompare(b.category, 'en', { sensitivity: 'base' });
   const tagged = rows.filter((r) => r.category !== UNTAGGED);
   const groups: SpendingGroup<R>[] = [
-    ...typeList(types).map((type) => ({ label: type, rows: tagged.filter((r) => categoryType(types, r.category) === type).sort(byName) })),
+    ...spendingTypes(types).map((type) => ({ label: type, rows: tagged.filter((r) => categoryType(types, r.category) === type).sort(byName) })),
     { label: null, rows: rows.filter((r) => r.category === UNTAGGED) },
   ];
   return groups.filter((g) => g.rows.length > 0);
+}
+
+/** Splits income rows by Income group, in the user's order, each A to Z. */
+export function groupIncome<R extends { category: string }>(rows: R[], types: GroupSettings): { label: string; rows: R[] }[] {
+  const byName = (a: R, b: R) => a.category.localeCompare(b.category, 'en', { sensitivity: 'base' });
+  return incomeTypes(types)
+    .map((type) => ({ label: type, rows: rows.filter((r) => categoryType(types, r.category) === type).sort(byName) }))
+    .filter((g) => g.rows.length > 0);
 }
 
 /** "2026-03-01" -> "2026-03-02", in calendar days. */
@@ -163,10 +180,10 @@ export interface Forecast {
   months: string[];
   /** The part month whose column is only what's left of it, after the latest transaction. */
   restOf: string | null;
-  /** Income per month, in pence. */
+  /** Net money in per income category, one amount per month, in pence. */
+  incomeRows: { category: string; amounts: number[] }[];
+  /** All income categories together per month, in pence. */
   income: number[];
-  /** Net transfers per month, in pence: £0 unless typed in. They move the balance but aren't income or spending. */
-  transfers: number[];
   /** Spending per category, one amount per month, in pence. */
   rows: { category: string; amounts: number[] }[];
   totals: number[];
@@ -213,28 +230,33 @@ export function forecastFrom(
   count = FORECAST_MONTHS,
   unforecast: string[] = [],
   wholePartMonth = false,
+  incomeCategories: string[] = NOT_SPENDING,
 ): Forecast {
   const first = monthsWithData(transactions)[0];
   const latest = monthsWithData(transactions).at(-1);
-  if (!latest) return { months: [], restOf: null, income: [], transfers: [], rows: [], totals: [], closing: [] };
+  if (!latest) return { months: [], restOf: null, incomeRows: [], income: [], rows: [], totals: [], closing: [] };
   const restOf = partMonth(transactions);
-  const history = categoryHistory(transactions, restOf && first !== latest ? previousMonth(latest) : latest, 1);
-  const actual = categoryHistory(transactions, latest, 1);
+  const history = categoryHistory(transactions, restOf && first !== latest ? previousMonth(latest) : latest, 1, incomeCategories);
+  const actual = categoryHistory(transactions, latest, 1, incomeCategories);
   const months: string[] = restOf ? [restOf] : [];
   for (let m = nextMonth(latest); months.length < count + (restOf ? 1 : 0); m = nextMonth(m)) months.push(m);
 
   const average = (amount: number) => (history.ytd.months ? Math.round(amount / history.ytd.months / 100) * 100 : 0);
   const amount = (m: string, row: string, ytd: number, soFar: number) =>
     figures[m]?.[row] ?? (m === restOf && !wholePartMonth ? Math.max(0, average(ytd) - soFar) : average(ytd));
-  const income = months.map((m) =>
-    unforecast.includes('Income') ? (figures[m]?.Income ?? 0) : amount(m, 'Income', history.ytd.income, actual.income[0]),
-  );
-  const transfers = months.map((m) => figures[m]?.Transfers ?? 0);
+  // Every income category gets a row, so a figure can be typed in even before any money has come in.
+  const incomeRows = incomeCategories.map((category) => {
+    const ytd = history.incomeRows.find((r) => r.category === category)?.ytd ?? 0;
+    const soFar = actual.incomeRows.find((r) => r.category === category)?.amounts[0] ?? 0;
+    const off = unforecast.includes(category);
+    return { category, amounts: months.map((m) => (off ? (figures[m]?.[category] ?? 0) : amount(m, category, ytd, soFar))) };
+  });
+  const income = months.map((_, i) => sum(incomeRows.map((r) => r.amounts[i])));
   const spent = new Set(history.rows.map((r) => r.category));
   const rowCategories = [
     ...history.rows.map((r) => r.category),
     ...actual.rows.filter((r) => !spent.has(r.category)).map((r) => r.category),
-    ...categories.filter((c) => !NOT_SPENDING.includes(c) && !spent.has(c) && !actual.rows.some((r) => r.category === c)).sort((a, b) => a.localeCompare(b)),
+    ...categories.filter((c) => !incomeCategories.includes(c) && !spent.has(c) && !actual.rows.some((r) => r.category === c)).sort((a, b) => a.localeCompare(b)),
   ];
   const rows = rowCategories.map((category) => {
     const ytd = history.rows.find((r) => r.category === category)?.ytd ?? 0;
@@ -247,9 +269,9 @@ export function forecastFrom(
   if (opening !== null) {
     const start = wholePartMonth && restOf ? `${restOf}-01` : null;
     const now = transactions.reduce((balance, t) => (start && t.date >= start ? balance : balance + t.amount), opening);
-    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? now) + income[i] + transfers[i] - totals[i]);
+    for (let i = 0; i < months.length; i++) closing.push((closing[i - 1] ?? now) + income[i] - totals[i]);
   }
-  return { months, restOf, income, transfers, rows, totals, closing };
+  return { months, restOf, incomeRows, income, rows, totals, closing };
 }
 
 function daysInMonth(month: string): number {
@@ -269,14 +291,14 @@ export interface Payday {
   share: number;
 }
 
-/** Each source of Income in the six months to `endMonth`, the day it usually arrives and its part of the total. */
-export function incomePaydays(transactions: Transaction[], endMonth: string): Payday[] {
+/** Each source of money into `categories` in the six months to `endMonth`, the day it usually arrives and its part of the total. */
+export function incomePaydays(transactions: Transaction[], endMonth: string, categories: string[] = ['Income']): Payday[] {
   let startMonth = endMonth;
   for (let i = 1; i < PAYDAY_MONTHS; i++) startMonth = previousMonth(startMonth);
   const sources = new Map<string, { days: number[]; total: number }>();
   for (const t of transactions) {
     const month = t.date.slice(0, 7);
-    if (t.category !== 'Income' || t.amount <= 0 || month < startMonth || month > endMonth) continue;
+    if (!t.category || !categories.includes(t.category) || t.amount <= 0 || month < startMonth || month > endMonth) continue;
     const source = sources.get(t.merchant) ?? { days: [], total: 0 };
     source.days.push(Number(t.date.slice(8)));
     source.total += t.amount;
@@ -293,10 +315,11 @@ export function incomePaydays(transactions: Transaction[], endMonth: string): Pa
 /**
  * The forecast balance at the end of each day from the day after `from`, the
  * last day with transactions, to `to`, starting at `balance`. Each month's
- * forecast spending is spread evenly over its days, and its income arrives in
- * one go on the day each source usually pays. The rest of `from`'s own month
- * spreads its forecast over the days left, with income on the paydays still
- * to come.
+ * forecast spending is spread evenly over its days. Each income category's
+ * money in arrives in one go on the days its sources usually pay; money out of
+ * an income category (such as a transfer to savings), or one with no usual
+ * payday, is spread evenly too. The rest of `from`'s own month spreads its
+ * forecast over the days left, with income on the paydays still to come.
  */
 export function dailyForecast(
   transactions: Transaction[],
@@ -305,37 +328,39 @@ export function dailyForecast(
   to: string,
   categories: string[] = [],
   unforecast: string[] = [],
+  incomeCategories: string[] = NOT_SPENDING,
 ): { date: string; balance: number }[] {
   const fromMonth = from.date.slice(0, 7);
   let count = 0;
   for (let m = nextMonth(fromMonth); m <= to.slice(0, 7); m = nextMonth(m)) count++;
-  const forecast = forecastFrom(transactions, figures, null, categories, count, unforecast);
-  const spending = new Map(forecast.months.map((m, i) => [m, forecast.totals[i]]));
-  const income = new Map(forecast.months.map((m, i) => [m, forecast.income[i]]));
-  const transfers = new Map(forecast.months.map((m, i) => [m, forecast.transfers[i]]));
-  const paydays = incomePaydays(transactions, fromMonth);
-
+  const forecast = forecastFrom(transactions, figures, null, categories, count, unforecast, false, incomeCategories);
+  const index = new Map(forecast.months.map((m, i) => [m, i]));
   const fromDay = Number(from.date.slice(8));
   const daysLeft = daysInMonth(fromMonth) - fromDay;
-  const received = new Set(transactions.filter((t) => t.category === 'Income' && t.date.startsWith(fromMonth)).map((t) => t.merchant));
-  const due = paydays.filter((p) => !received.has(p.merchant) && Math.min(p.day, daysInMonth(fromMonth)) > fromDay);
-  const dueShare = due.reduce((total, p) => total + p.share, 0);
+  const sources = forecast.incomeRows.map((row) => {
+    const paydays = incomePaydays(transactions, fromMonth, [row.category]);
+    const received = new Set(transactions.filter((t) => t.category === row.category && t.date.startsWith(fromMonth)).map((t) => t.merchant));
+    const due = paydays.filter((p) => !received.has(p.merchant) && Math.min(p.day, daysInMonth(fromMonth)) > fromDay);
+    return { amounts: row.amounts, paydays, due, dueShare: due.reduce((total, p) => total + p.share, 0) };
+  });
 
   const days: { date: string; balance: number }[] = [];
   let balance = from.balance;
   for (let day = nextDay(from.date); day <= to; day = nextDay(day)) {
     const month = day.slice(0, 7);
+    const i = index.get(month);
     const length = daysInMonth(month);
     const date = Number(day.slice(8));
-    const monthIncome = income.get(month) ?? 0;
-    if (month === fromMonth) {
-      balance += ((transfers.get(month) ?? 0) - (spending.get(month) ?? 0)) / daysLeft;
-      if (dueShare === 0) balance += monthIncome / daysLeft;
-      for (const p of due) if (Math.min(p.day, length) === date) balance += (monthIncome * p.share) / dueShare;
-    } else {
-      balance += ((transfers.get(month) ?? 0) - (spending.get(month) ?? 0)) / length;
-      if (paydays.length === 0) balance += monthIncome / length;
-      for (const p of paydays) if (Math.min(p.day, length) === date) balance += monthIncome * p.share;
+    const spread = month === fromMonth ? daysLeft : length;
+    if (i !== undefined) {
+      balance -= forecast.totals[i] / spread;
+      for (const s of sources) {
+        const amount = s.amounts[i];
+        const paydays = month === fromMonth ? s.due : s.paydays;
+        const share = month === fromMonth ? s.dueShare : s.paydays.length ? 1 : 0;
+        if (amount <= 0 || share === 0) balance += amount / spread;
+        else for (const p of paydays) if (Math.min(p.day, length) === date) balance += (amount * p.share) / share;
+      }
     }
     days.push({ date: day, balance: Math.round(balance) });
   }

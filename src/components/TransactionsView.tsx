@@ -7,24 +7,19 @@ import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/
 import { parseMoney } from '../lib/importer';
 import { amountIn, isTagged, MAX_PARTS, splitProblem, withSplit } from '../lib/splits';
 import { sortedCategories } from '../lib/store';
-import { NOT_SPENDING } from '../lib/summary';
-import { categoryType, typeList, type BudgetData, type Split, type Transaction } from '../lib/types';
+import { categoryType, incomeTypes, spendingTypes, type BudgetData, type Split, type Transaction } from '../lib/types';
 
-/** Categories under their type: Not spending first, then each spending type in order, each A to Z. */
+/** Categories under their group: Income groups first, then Spending groups, in order, each A to Z. */
 type CategoryGroups = { label: string; categories: string[] }[];
 
 function categoryGroups(data: BudgetData): CategoryGroups {
   const sorted = sortedCategories(data.categories);
-  return [
-    { label: 'Not spending', categories: sorted.filter((c) => NOT_SPENDING.includes(c)) },
-    ...typeList(data).map((type) => ({
-      label: type,
-      categories: sorted.filter((c) => !NOT_SPENDING.includes(c) && categoryType(data, c) === type),
-    })),
-  ].filter((g) => g.categories.length > 0);
+  return [...incomeTypes(data), ...spendingTypes(data)]
+    .map((type) => ({ label: type, categories: sorted.filter((c) => categoryType(data, c) === type) }))
+    .filter((g) => g.categories.length > 0);
 }
 
-/** A dropdown's category options, headed by their type so it shows while choosing. */
+/** A dropdown's category options, headed by their group so it shows while choosing. */
 function CategoryOptions({ groups }: { groups: CategoryGroups }) {
   return (
     <>

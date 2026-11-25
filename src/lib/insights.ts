@@ -2,7 +2,7 @@ import { ClaudeError, FALLBACK_BETA, MODEL, poundsAndPence, replyText, withClaud
 import { expandSplits } from './splits';
 import { impliedOpeningBalance } from './export';
 import { categoryHistory, closingBalances, forecastFrom, monthsWithData, UNTAGGED } from './summary';
-import { categoryType, unforecastCategories, type BudgetData } from './types';
+import { categoryType, incomeCategories, unforecastCategories, type BudgetData } from './types';
 
 /** How many months of actual figures Claude is shown, ending at the latest. */
 const MONTHS_REVIEWED = 6;
@@ -24,10 +24,11 @@ export function reviewData(budget: BudgetData, today: string) {
   const latest = months.at(-1);
   if (!latest) return null;
   const withData = new Set(months);
-  const history = categoryHistory(data.transactions, latest, MONTHS_REVIEWED);
+  const income = incomeCategories(data);
+  const history = categoryHistory(data.transactions, latest, MONTHS_REVIEWED, income);
   const opening = impliedOpeningBalance(data.transactions);
   const closing = opening === null ? null : closingBalances(data.transactions, opening, history.months);
-  const forecast = forecastFrom(data.transactions, data.forecast, opening, data.categories, undefined, unforecastCategories(data, data.categories));
+  const forecast = forecastFrom(data.transactions, data.forecast, opening, data.categories, undefined, unforecastCategories(data, data.categories), false, income);
   const typeOf = (category: string) =>
     category === UNTAGGED ? 'untagged' : categoryType(data, category);
   // Left out of income and spending, but it moves the balance, so Claude needs it to make sense of it.

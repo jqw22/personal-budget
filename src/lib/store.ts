@@ -1,9 +1,9 @@
 import { STORAGE_PREFIX } from './env';
 import { applyRules } from './rules';
 import { NOT_SPENDING } from './summary';
-import { DEFAULT_CATEGORIES, DEFAULT_TYPES, typeList, type BudgetData, type Transaction } from './types';
+import { DEFAULT_CATEGORIES, DEFAULT_INCOME_GROUPS, DEFAULT_TYPES, isIncomeType, typeList, type BudgetData, type Transaction } from './types';
 
-const VERSION = 4;
+const VERSION = 5;
 
 /** Default categories renamed in version 2. */
 const RENAMED_IN_V2: Record<string, string> = {
@@ -17,7 +17,15 @@ const RENAMED_IN_V2: Record<string, string> = {
 const KEY = `${STORAGE_PREFIX}v1`;
 
 export function emptyData(): BudgetData {
-  return { transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], types: [...DEFAULT_TYPES], categoryTypes: {}, version: VERSION };
+  return {
+    transactions: [],
+    rules: [],
+    categories: [...DEFAULT_CATEGORIES],
+    types: [...DEFAULT_TYPES],
+    incomeGroups: [...DEFAULT_INCOME_GROUPS],
+    categoryTypes: {},
+    version: VERSION,
+  };
 }
 
 /** The deleted-categories list without `name`, for when a category of that name is wanted again. */
@@ -69,11 +77,22 @@ export function setCategoryType(data: BudgetData, category: string, type: string
   return { ...data, categoryTypes: { ...data.categoryTypes, [category]: type } };
 }
 
-/** Adds a type at the end of the list. */
-export function addType(data: BudgetData, name: string): BudgetData {
+/** The Income-kind groups as saved, with `type` added or taken off. */
+function withIncome(data: BudgetData, type: string, income: boolean): string[] {
+  const others = (data.incomeGroups ?? DEFAULT_INCOME_GROUPS).filter((t) => t !== type);
+  return income ? [...others, type] : others;
+}
+
+/** Adds a group at the end of the list, of Income or Spending kind. */
+export function addType(data: BudgetData, name: string, income = false): BudgetData {
   const types = typeList(data);
   if (types.includes(name)) return data;
-  return { ...data, types: [...types, name], deletedTypes: (data.deletedTypes ?? []).filter((t) => t !== name) };
+  return { ...data, types: [...types, name], incomeGroups: withIncome(data, name, income), deletedTypes: (data.deletedTypes ?? []).filter((t) => t !== name) };
+}
+
+/** Makes a group Income kind (money in) or Spending kind. */
+export function setTypeIncome(data: BudgetData, type: string, income: boolean): BudgetData {
+  return { ...data, incomeGroups: withIncome(data, type, income) };
 }
 
 /** Removes a type; its categories count as the last remaining type until given another. */
@@ -82,7 +101,7 @@ export function removeType(data: BudgetData, name: string): BudgetData {
   if (types.length === 0) return data;
   const categoryTypes = Object.fromEntries(Object.entries(data.categoryTypes ?? {}).filter(([, t]) => t !== name));
   const noForecastTypes = (data.noForecastTypes ?? []).filter((t) => t !== name);
-  return { ...data, types, categoryTypes, noForecastTypes, deletedTypes: [...new Set([...(data.deletedTypes ?? []), name])] };
+  return { ...data, types, categoryTypes, noForecastTypes, incomeGroups: withIncome(data, name, false), deletedTypes: [...new Set([...(data.deletedTypes ?? []), name])] };
 }
 
 /** Includes a type in the forecast or leaves it out. */
@@ -110,6 +129,7 @@ export function renameType(data: BudgetData, from: string, to: string): BudgetDa
     types: types.map((t) => (t === from ? to : t)),
     categoryTypes: Object.fromEntries(Object.entries(data.categoryTypes ?? {}).map(([c, t]) => [c, t === from ? to : t])),
     noForecastTypes: (data.noForecastTypes ?? []).map((t) => (t === from ? to : t)),
+    incomeGroups: (data.incomeGroups ?? DEFAULT_INCOME_GROUPS).map((t) => (t === from ? to : t)),
     deletedTypes: [...new Set([...(data.deletedTypes ?? []).filter((t) => t !== to), from])],
   };
 }
@@ -141,12 +161,29 @@ export function migrate(data: BudgetData): BudgetData {
       categoryTypes: { ...Object.fromEntries(next.categories.filter((c) => !NOT_SPENDING.includes(c)).map((c) => [c, type(c)])), ...next.categoryTypes },
     };
   }
-  // Income and Transfers are built in: the summary has rows of its own for them, so they always exist.
-  const missing = NOT_SPENDING.filter((c) => !next.categories.includes(c));
-  if (missing.length || next.deletedCategories?.some((c) => NOT_SPENDING.includes(c))) {
-    const deletedCategories = (next.deletedCategories ?? []).filter((c) => !NOT_SPENDING.includes(c));
-    next = { ...next, categories: [...next.categories, ...missing], deletedCategories };
-    if (!deletedCategories.length) delete next.deletedCategories;
+  if ((next.version ?? 1) < 5) {
+    // Income and Transfers were built in until version 5, so make sure they're there to move into a group.
+    const missing = NOT_SPENDING.filter((c) => !next.categories.includes(c));
+    if (missing.length || next.deletedCategories?.some((c) => NOT_SPENDING.includes(c))) {
+      const deletedCategories = (next.deletedCategories ?? []).filter((c) => !NOT_SPENDING.includes(c));
+      next = { ...next, categories: [...next.categories, ...missing], deletedCategories };
+      if (!deletedCategories.length) delete next.deletedCategories;
+    }
+    // Groups became Income or Spending kind: Income and Transfers go in an Income group at the top.
+    if (!typeList(next).some((t) => (next.incomeGroups ?? []).includes(t))) {
+      const types = typeList(next);
+      next = {
+        ...next,
+        types: types.includes('Income') ? types : ['Income', ...types],
+        incomeGroups: [...new Set([...(next.incomeGroups ?? []), 'Income'])],
+        deletedTypes: next.deletedTypes?.filter((t) => t !== 'Income'),
+      };
+      if (!next.deletedTypes?.length) delete next.deletedTypes;
+    }
+    // With no group of their own they count as Income (see categoryType).
+    const categoryTypes = { ...next.categoryTypes };
+    for (const c of NOT_SPENDING) if (categoryTypes[c] && !isIncomeType(next, categoryTypes[c])) delete categoryTypes[c];
+    next = { ...next, categoryTypes };
   }
   return { ...next, version: VERSION };
 }

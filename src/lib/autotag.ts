@@ -1,7 +1,6 @@
 import { FALLBACK_BETA, MODEL, poundsAndPence, replyText, withClaude, ClaudeError } from './claude';
 import { isTagged } from './splits';
-import { NOT_SPENDING } from './summary';
-import { categoryType, type BudgetData } from './types';
+import { categoryType, isIncomeType, type BudgetData } from './types';
 
 /** Most merchants asked about at once, most frequent first. */
 const MAX_MERCHANTS = 150;
@@ -33,7 +32,7 @@ export function untaggedMerchants(data: BudgetData): UntaggedMerchant[] {
 export function tagRequest(data: BudgetData, merchants: UntaggedMerchant[]) {
   return {
     categories: Object.fromEntries(
-      data.categories.map((c) => [c, NOT_SPENDING.includes(c) ? 'not spending' : categoryType(data, c)]),
+      data.categories.map((c) => [c, isIncomeType(data, categoryType(data, c)) ? `money in (${categoryType(data, c)})` : categoryType(data, c)]),
     ),
     examples: data.rules.slice(0, MAX_EXAMPLES).map((r) => `${r.match} → ${r.category}`),
     merchantsColumns: 'merchant|transactions|typical amount in pounds (negative is money out)',

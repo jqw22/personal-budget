@@ -34,7 +34,7 @@ describe('tagRequest', () => {
     const request = tagRequest(data, untaggedMerchants(data));
     expect(request.merchants).toEqual(['PRET A MANGER|3|-5.20', 'NETFLIX|1|-10.99']);
     expect(request.examples).toEqual(['TESCO → Living/Food']);
-    expect(request.categories).toMatchObject({ 'Living/Food': 'Essential', 'Going Out': 'Discretionary', Income: 'not spending' });
+    expect(request.categories).toMatchObject({ 'Living/Food': 'Essential', 'Going Out': 'Discretionary', Income: 'money in (Income)' });
     expect(JSON.stringify(request)).not.toContain('99887766');
   });
 });

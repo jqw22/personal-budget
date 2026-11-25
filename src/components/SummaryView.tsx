@@ -9,7 +9,7 @@ import {
   UNTAGGED,
 } from '../lib/summary';
 import { impliedOpeningBalance } from '../lib/export';
-import type { BudgetData } from '../lib/types';
+import { incomeCategories, type BudgetData } from '../lib/types';
 import { CombinedTable } from './CombinedTable';
 import { expandSplits } from '../lib/splits';
 
@@ -54,7 +54,12 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   // The table runs January to December of the picked year: complete months as actuals, then the
   // forecast up to the end of the year, which only the latest year has.
   const month = months.filter((m) => m.startsWith(year)).at(-1) ?? '';
-  const history = useMemo(() => (month ? categoryHistory(transactions, month, monthsIntoYear(month)) : null), [transactions, month]);
+  const income = incomeCategories(data);
+  const incomeKey = income.join('\n');
+  const history = useMemo(
+    () => (month ? categoryHistory(transactions, month, monthsIntoYear(month), incomeKey ? incomeKey.split('\n') : []) : null),
+    [transactions, month, incomeKey],
+  );
 
   if (allMonths.length === 0) {
     return (
@@ -87,7 +92,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
   const lastActual = days.at(-1);
   const forecast =
     lastActual && isLatestYear
-      ? dailyForecast(transactions, data.forecast, lastActual, chartEnd, data.categories, data.categories)
+      ? dailyForecast(transactions, data.forecast, lastActual, chartEnd, data.categories, data.categories, income)
       : [];
 
   return (

@@ -52,9 +52,16 @@ describe('categoryHistory', () => {
       { category: 'Living/Food', amounts: [0, 0, 2000, 2500], ytd: 4500 },
       { category: 'Untagged', amounts: [0, 0, 0, 700], ytd: 700 },
     ]);
-    expect(h.ytd).toEqual({ months: 2, total: 10200, income: 200000, transfers: -10000 });
+    expect(h.ytd).toEqual({ months: 2, total: 10200, income: 190000 });
     expect(h.totals).toEqual([0, 0, 3000, 7200]);
+    expect(h.income).toEqual([0, 0, 0, 190000]);
+    expect(h.incomeRows.map((r) => [r.category, r.ytd])).toEqual([['Transfers', -10000], ['Income', 200000]]);
+  });
+
+  it('counts only the given income categories as money in', () => {
+    const h = categoryHistory(transactions, '2026-06', 4, ['Income']);
     expect(h.income).toEqual([0, 0, 0, 200000]);
+    expect(h.rows.map((r) => r.category)).toContain('Transfers');
   });
 });
 
