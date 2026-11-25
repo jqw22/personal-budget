@@ -1134,7 +1134,8 @@ table.summary.combined .row-tools {
   font-size: 0.7rem;
 }
 
-table.summary.combined tr:is(:hover, :focus-within) .row-tools {
+/* Only while pointing at (or tabbed into) the category's own cell, not anywhere along its row. */
+table.summary.combined td.category-cell:is(:hover, :focus-within) .row-tools {
   display: flex;
 }
 
