@@ -1189,11 +1189,14 @@ table.summary.planning {
 }
 
 table.summary.planning :is(th, td) {
-  min-width: 84px;
+  min-width: 72px;
+  padding-left: 5px;
+  padding-right: 2px;
 }
 
 table.summary.planning :is(th, td):first-child {
-  min-width: 150px;
+  min-width: 130px;
+  padding-left: 2px;
 }
 
 table.summary.planning .year-start {
@@ -1233,4 +1236,37 @@ table.summary.combined td.fc input.forecast-input:is(:hover, :focus) {
   border-color: var(--accent);
   background: var(--surface);
   color: var(--text);
+}
+
+/* Planning uses the summary's text sizes and row heights. */
+table.summary.planning td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: calc(1rem - 1pt);
+}
+
+table.summary.planning th {
+  font-size: calc(0.85rem - 1pt);
+}
+
+table.summary.planning :is(tr.subtotal, tfoot tr) th {
+  font-size: calc(1rem - 1pt);
+}
+
+table.summary.planning tr.section th {
+  font-size: calc(0.8rem - 1pt);
+}
+
+table.summary.planning thead th {
+  text-align: center;
+}
+
+table.summary.planning thead th:first-child {
+  text-align: left;
+}
+
+table.summary.planning input.forecast-input {
+  width: 100%;
+  max-width: 5em;
+  padding: 1px 3px;
 }
