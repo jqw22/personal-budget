@@ -752,7 +752,8 @@ table.summary.combined .fc-start {
   border-left: 2px solid var(--border);
 }
 
-table.summary.combined .fc {
+/* Only the headings mark the planned months; their figures look just like the actual ones. */
+table.summary.combined thead .fc {
   background: var(--forecast);
 }
 
@@ -1214,4 +1215,21 @@ table.summary.planning tr.gap-row td {
 /* A wider gap between the two years. */
 table.summary.planning .year-start ~ .year-start {
   border-left-width: 45px;
+}
+
+/* A planned month's box reads like an actual figure until it's pointed at or typed in. */
+table.summary.combined td.fc input.forecast-input,
+table.summary.combined td.fc input.forecast-input.edited {
+  max-width: none;
+  padding: 0 2px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: inherit;
+}
+
+table.summary.combined td.fc input.forecast-input:is(:hover, :focus) {
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--text);
 }
