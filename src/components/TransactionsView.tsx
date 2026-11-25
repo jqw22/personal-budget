@@ -19,9 +19,12 @@ function categoryGroups(data: BudgetData): CategoryGroups {
 }
 
 /** A dropdown's category options, headed by their group so it shows while choosing. */
-function CategoryOptions({ groups }: { groups: CategoryGroups }) {
+function CategoryOptions({ groups, current }: { groups: CategoryGroups; current?: string | null }) {
+  // An archived category isn't offered, but one already chosen still shows.
+  const missing = current && !groups.some((g) => g.categories.includes(current)) ? current : null;
   return (
     <>
+      {missing && <option value={missing}>{missing} (archived)</option>}
       {groups.map((g) => (
         <optgroup key={g.label} label={g.label}>
           {g.categories.map((c) => (
@@ -149,6 +152,9 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
   const balances = opening === null ? null : runningBalances(data.transactions, opening);
   const untagged = data.transactions.filter((t) => !isTagged(t)).length;
   const groups = categoryGroups(data);
+  // Tagging lists leave archived categories out; the filter keeps them.
+  const archived = new Set(data.archivedCategories ?? []);
+  const tagGroups = groups.map((g) => ({ ...g, categories: g.categories.filter((c) => !archived.has(c)) })).filter((g) => g.categories.length > 0);
 
   return (
     <section>
@@ -270,7 +276,7 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
                     ) : (
                       <select value={t.category ?? ''} onChange={(e) => tag(t, e.target.value)}>
                         <option value="">Untagged</option>
-                        <CategoryOptions groups={groups} />
+                        <CategoryOptions groups={tagGroups} current={t.category} />
                       </select>
                     )}
                   </td>
@@ -326,7 +332,7 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
                 {splitting === t.id && (
                   <tr className="split-row">
                     <td colSpan={7}>
-                      <SplitEditor t={t} groups={groups} onSave={(parts) => split(t, parts)} onCancel={() => setSplitting(null)} />
+                      <SplitEditor t={t} groups={tagGroups} onSave={(parts) => split(t, parts)} onCancel={() => setSplitting(null)} />
                     </td>
                   </tr>
                 )}
@@ -403,7 +409,7 @@ function SplitEditor({
           )}
           <select value={r.category} onChange={(e) => update(i, { category: e.target.value })} aria-label={`Part ${i + 1} category`}>
             <option value="">Choose…</option>
-            <CategoryOptions groups={groups} />
+            <CategoryOptions groups={groups} current={r.category} />
           </select>
           {rows.length > 2 && (
             <button className="link" title={`Remove part ${i + 1}`} onClick={() => setRows(rows.filter((_, j) => j !== i))}>

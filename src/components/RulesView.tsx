@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { expandSplits, withSplit } from '../lib/splits';
+import { expandSplits } from '../lib/splits';
 import { applyRules } from '../lib/rules';
-import { addType, moveType, removeType, renameCategory, renameType, setCategoryType, setTypeIncome, sortedCategories, forgetDeleted } from '../lib/store';
+import { addCategory, addType, moveType, removeCategory as removeFromData, removeType, renameCategory, renameType, setArchived, setCategoryType, setTypeIncome, sortedCategories } from '../lib/store';
 import { categoryType, incomeTypes, isIncomeType, spendingTypes, typeList } from '../lib/types';
 import type { BudgetData, Rule } from '../lib/types';
 
@@ -57,10 +57,10 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
     onChange({ ...data, rules, transactions: applyRules(data.transactions, rules) });
   }
 
-  function addCategory() {
+  function addNewCategory() {
     const name = newCategory.trim();
     if (!name || !newType || data.categories.includes(name)) return;
-    onChange(setType({ ...data, categories: [...data.categories, name], deletedCategories: forgetDeleted(data.deletedCategories, name) }, name, newType));
+    onChange(addCategory(data, name, newType));
     setNewCategory('');
     setNewType('');
   }
@@ -90,26 +90,11 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
   }
 
   function removeCategory(name: string) {
-    const rules = data.rules.filter((r) => r.category !== name);
-    // A split with a part in this category goes back to one untagged transaction.
-    const transactions = data.transactions.map((t) =>
-      t.splits?.some((p) => p.category === name)
-        ? withSplit(t, null)
-        : t.category === name
-          ? { ...t, category: null, categorySource: null }
-          : t,
-    );
-    onChange({
-      ...data,
-      categories: data.categories.filter((c) => c !== name),
-      deletedCategories: [...new Set([...(data.deletedCategories ?? []), name])],
-      categoryTypes: Object.fromEntries(Object.entries(data.categoryTypes ?? {}).filter(([c]) => c !== name)),
-      rules,
-      transactions: applyRules(transactions, rules),
-    });
+    onChange(removeFromData(data, name));
   }
 
   const types = typeList(data);
+  const archived = new Set(data.archivedCategories ?? []);
   // Income groups' categories at the top, then each Spending group's, in the groups' order, each A to Z.
   const sorted = sortedCategories(data.categories);
   const categories = [...incomeTypes(data), ...spendingTypes(data)].flatMap((type) => sorted.filter((c) => categoryType(data, c) === type));
@@ -248,6 +233,9 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
                       {c}
                     </button>
                   )}
+                  {archived.has(c) && editing?.from !== c && (
+                    <span className="muted"> (archived)</span>
+                  )}
                 </td>
                 <td>
                   <select
@@ -260,6 +248,13 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
                 </td>
                 <td className="num muted">{counts.get(c) ?? 0}</td>
                 <td>
+                  <button
+                    className="link"
+                    title={archived.has(c) ? `Bring ${c} back into tagging lists and the summary` : `Archive ${c}: keep it and its transactions, but hide it from tagging lists, and from the summary when it has nothing`}
+                    onClick={() => onChange(setArchived(data, c, !archived.has(c)))}
+                  >
+                    {archived.has(c) ? 'Unarchive' : 'Archive'}
+                  </button>{' '}
                   <button
                     className="link"
                     title={`Remove ${c}`}
@@ -298,7 +293,7 @@ export function RulesView({ data, onChange, part, focusRule }: Props) {
           className="inline"
           onSubmit={(e) => {
             e.preventDefault();
-            addCategory();
+            addNewCategory();
           }}
         >
           <input placeholder="New category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />

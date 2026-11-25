@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { migrate, renameCategory } from './store';
-import { incomeCategories, type BudgetData, type Transaction } from './types';
+import { addCategory, categoryUse, emptyData, migrate, removeCategory, renameCategory, setArchived } from './store';
+import { incomeCategories, typeList, type BudgetData, type Transaction } from './types';
 
 function tx(id: string, category: string | null): Transaction {
   return { id, date: '2026-06-01', description: id, merchant: id, amount: -100, balance: null, category, categorySource: 'manual' };
@@ -63,5 +63,44 @@ describe('renameCategory', () => {
   it('merges into an existing category of the same name without duplicating it', () => {
     const data = renameCategory({ ...oldData, categories: ['Groceries', 'Living/Food'] }, 'Groceries', 'Living/Food');
     expect(data.categories).toEqual(['Living/Food']);
+  });
+});
+
+describe('a new budget', () => {
+  it('starts with no categories and no groups', () => {
+    const data = emptyData();
+    expect(data.categories).toEqual([]);
+    expect(typeList(data)).toEqual([]);
+  });
+});
+
+describe('adding, archiving and removing categories', () => {
+  const start = { ...emptyData(), types: ['Bills'], transactions: [tx('a', 'Rent')], rules: [{ id: 'r', match: 'LANDLORD', category: 'Rent' }] };
+
+  it('adds a category to a group and takes it off the deleted and archived lists', () => {
+    const data = addCategory({ ...start, deletedCategories: ['Rent'], archivedCategories: ['Rent'] }, 'Rent', 'Bills');
+    expect(data.categories).toEqual(['Rent']);
+    expect(data.categoryTypes).toEqual({ Rent: 'Bills' });
+    expect(data.deletedCategories).toEqual([]);
+    expect(data.archivedCategories).toEqual([]);
+  });
+
+  it('archives without touching transactions or rules, and brings it back', () => {
+    const added = addCategory(start, 'Rent', 'Bills');
+    const archived = setArchived(added, 'Rent', true);
+    expect(archived.archivedCategories).toEqual(['Rent']);
+    expect(archived.transactions[0].category).toBe('Rent');
+    expect(archived.rules).toHaveLength(1);
+    expect(setArchived(archived, 'Rent', false).archivedCategories).toEqual([]);
+  });
+
+  it('removes a category, untagging its transactions and deleting its rules', () => {
+    const added = addCategory(start, 'Rent', 'Bills');
+    expect(categoryUse(added, 'Rent')).toEqual({ transactions: 1, rules: 1 });
+    const removed = removeCategory(added, 'Rent');
+    expect(removed.categories).toEqual([]);
+    expect(removed.transactions[0].category).toBeNull();
+    expect(removed.rules).toEqual([]);
+    expect(removed.deletedCategories).toEqual(['Rent']);
   });
 });

@@ -1,7 +1,8 @@
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import { formatPounds } from '../lib/format';
 import { categoryHistory, closingBalances, forecastFrom, groupIncome, groupSpending, UNTAGGED } from '../lib/summary';
-import { incomeCategories, type BudgetData } from '../lib/types';
+import { incomeCategories, typeList, type BudgetData } from '../lib/types';
+import { addCategory, categoryUse, removeCategory, setArchived } from '../lib/store';
 import { BalanceChart, type ChartColumn } from './BalanceChart';
 import { MoneyInput, net, shortMonth } from './forecastParts';
 import { expandSplits } from '../lib/splits';
@@ -48,6 +49,8 @@ function inYear(fc: ReturnType<typeof forecastFrom>, year: string): ReturnType<t
 /** The year's budget, the actual months and the forecast, then this year so far and its monthly average, in one table with a row per category. */
 export function CombinedTable({ data, year, month, count, forecastCount, opening, onShowTransactions, onChange, days, forecast }: Props) {
   const table = useRef<HTMLTableElement>(null);
+  /** The group a category is being added to, and the name typed so far. */
+  const [adding, setAdding] = useState<{ group: string; name: string } | null>(null);
   const [layout, setLayout] = useState<{ columns: ChartColumn[]; width: number }>({ columns: [], width: 0 });
   // The chart's months sit exactly under the table's month columns, so measure them.
   useLayoutEffect(() => {
@@ -135,8 +138,9 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
   const rowsOf = (
     actual: { category: string; amounts: number[] }[] | undefined,
     forecastRows: { category: string; amounts: number[] }[],
+    others: string[],
   ): Row[] =>
-    [...new Set([...forecastRows.map((r) => r.category), ...(actual ?? []).map((r) => r.category)])].map((category) => {
+    [...new Set([...forecastRows.map((r) => r.category), ...(actual ?? []).map((r) => r.category), ...others])].map((category) => {
       const a = actual?.find((r) => r.category === category);
       const f = forecastRows.find((r) => r.category === category);
       return {
@@ -146,10 +150,14 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
         forecast: f?.amounts ?? null,
       };
     });
-  const rows = rowsOf(history?.rows, fc.rows);
-  const incomeRows = rowsOf(history?.incomeRows, fc.incomeRows);
-  const groups = groupSpending(rows, data);
-  const incomeGroups = groupIncome(incomeRows, data);
+  // Every category gets a row, so one just added shows at once; an archived one only while it has figures.
+  const archived = new Set(data.archivedCategories ?? []);
+  const shown = (r: Row) =>
+    !archived.has(r.category) || r.ytd !== 0 || budget(r.category) !== 0 || r.actual.some((n) => n !== 0) || (r.forecast ?? []).some((n) => n !== 0);
+  const rows = rowsOf(history?.rows, fc.rows, data.categories.filter((c) => !income.includes(c))).filter(shown);
+  const incomeRows = rowsOf(history?.incomeRows, fc.incomeRows, income).filter(shown);
+  const groups = groupSpending(rows, data, true);
+  const incomeGroups = groupIncome(incomeRows, data, true);
   const totalOf = (list: Row[], pick: (r: Row) => number) => list.reduce((t, r) => t + pick(r), 0);
   const budgetSpending = totalOf(rows, (r) => (r.category === UNTAGGED ? 0 : budget(r.category)));
   const budgetIncome = totalOf(incomeRows, (r) => budget(r.category));
@@ -175,12 +183,32 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
     </Cell>
   );
 
+  /** Removes a category, after asking when transactions or rules use it. */
+  function remove(category: string) {
+    const use = categoryUse(data, category);
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const used = [use.transactions && plural(use.transactions, 'transaction'), use.rules && plural(use.rules, 'merchant rule')].filter(Boolean);
+    if (used.length && !window.confirm(`${category} is used by ${used.join(' and ')}. Remove it? Its transactions go back to untagged and its rules are deleted. To keep them, archive it instead.`)) return;
+    if (!used.length && !window.confirm(`Remove ${category}?`)) return;
+    onChange(removeCategory(data, category));
+  }
+
   /** A group's heading, its categories and its total. */
   const renderGroup = (group: { label: string | null; rows: Row[] }) => (
     <Fragment key={group.label ?? UNTAGGED}>
       {group.label && (
         <tr className="section">
-          <th>{group.label}</th>
+          <th>
+            {group.label}
+            <button
+              className="link row-add"
+              title={`Add a category to ${group.label}`}
+              aria-label={`Add a category to ${group.label}`}
+              onClick={() => setAdding({ group: group.label!, name: '' })}
+            >
+              +
+            </button>
+          </th>
           {/* Split where the separator columns fall, so they run unbroken through the headings. */}
           <th colSpan={span - 5} />
           <th colSpan={2} className="ytd-start" />
@@ -189,7 +217,7 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
       )}
       {group.rows.map((r) => (
         <tr key={r.category} className={r.category === UNTAGGED ? 'untagged' : ''}>
-          <td>
+          <td className="category-cell">
             <button
               className="link name"
               title={`See ${r.category} transactions`}
@@ -197,6 +225,24 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
             >
               {r.category}
             </button>
+            {r.category !== UNTAGGED && (
+              <span className="row-tools">
+                <button
+                  className="link"
+                  title={
+                    archived.has(r.category)
+                      ? `Bring ${r.category} back`
+                      : `Archive ${r.category}: keep it and its transactions, but hide it from tagging lists, and from the summary in years it has nothing`
+                  }
+                  onClick={() => onChange(setArchived(data, r.category, !archived.has(r.category)))}
+                >
+                  {archived.has(r.category) ? 'Unarchive' : 'Archive'}
+                </button>
+                <button className="link" title={`Remove ${r.category}`} aria-label={`Remove ${r.category}`} onClick={() => remove(r.category)}>
+                  ×
+                </button>
+              </span>
+            )}
           </td>
           {actualMonths.map((m, i) => actualCell(m, r.actual[i], 'td', 'muted', r.category))}
           {fc.months.map((m, i) => (
@@ -217,7 +263,37 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
           {r.category === UNTAGGED ? <td className="num diff-col" /> : <td className="num diff-col">{formatPounds(budget(r.category) - r.ytd)}</td>}
         </tr>
       ))}
-      {group.label && (
+      {group.label && adding?.group === group.label && (
+        <tr className="add-row">
+          <td colSpan={span}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = adding.name.trim();
+                if (name && !data.categories.includes(name)) onChange(addCategory(data, name, group.label!));
+                setAdding(null);
+              }}
+            >
+              <input
+                autoFocus
+                aria-label={`New category in ${group.label}`}
+                placeholder={`New category in ${group.label}`}
+                value={adding.name}
+                onChange={(e) => setAdding({ group: group.label!, name: e.target.value })}
+                onKeyDown={(e) => e.key === 'Escape' && setAdding(null)}
+              />
+              <button type="submit" disabled={!adding.name.trim() || data.categories.includes(adding.name.trim())}>
+                Add
+              </button>
+              <button type="button" onClick={() => setAdding(null)}>
+                Cancel
+              </button>
+              {data.categories.includes(adding.name.trim()) && <span className="muted">That category already exists.</span>}
+            </form>
+          </td>
+        </tr>
+      )}
+      {group.label && group.rows.length > 0 && (
         <tr className="subtotal">
           {/* The heading above names the group, so its total row needs no label. */}
           <th aria-label={`${group.label} total`} />
@@ -293,6 +369,13 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
           </tr>
         </thead>
         <tbody>
+          {typeList(data).length === 0 && (
+            <tr className="add-row">
+              <td colSpan={span} className="muted">
+                No groups yet. Add them on the Categories tab, then add categories to them here.
+              </td>
+            </tr>
+          )}
           {incomeGroups.map((group) => renderGroup(group))}
           {incomeGroups.length > 1 && (
             <tr className="subtotal income-total">

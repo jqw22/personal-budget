@@ -1,5 +1,6 @@
 import { STORAGE_PREFIX } from './env';
 import { applyRules } from './rules';
+import { withSplit } from './splits';
 import { NOT_SPENDING } from './summary';
 import { DEFAULT_CATEGORIES, DEFAULT_INCOME_GROUPS, DEFAULT_TYPES, isIncomeType, typeList, type BudgetData, type Transaction } from './types';
 
@@ -20,9 +21,10 @@ export function emptyData(): BudgetData {
   return {
     transactions: [],
     rules: [],
-    categories: [...DEFAULT_CATEGORIES],
-    types: [...DEFAULT_TYPES],
-    incomeGroups: [...DEFAULT_INCOME_GROUPS],
+    // A new budget starts empty: the user adds their own groups and categories.
+    categories: [],
+    types: [],
+    incomeGroups: [],
     categoryTypes: {},
     version: VERSION,
   };
@@ -56,6 +58,7 @@ export function renameCategory(data: BudgetData, from: string, to: string): Budg
     ...data,
     categories: [...new Set(data.categories.map(rename))],
     deletedCategories: forgetDeleted([...(data.deletedCategories ?? []), from], to),
+    ...(data.archivedCategories ? { archivedCategories: [...new Set(data.archivedCategories.map(rename))] } : {}),
     ...(data.essential ? { essential: [...new Set(data.essential.map(rename))] } : {}),
     ...(data.categoryTypes
       ? { categoryTypes: Object.fromEntries(Object.entries(data.categoryTypes).map(([c, type]) => [rename(c), type])) }
@@ -70,6 +73,54 @@ export function renameCategory(data: BudgetData, from: string, to: string): Budg
         : next;
     }),
   };
+}
+
+/** Adds a category to a group, taking it off the deleted and archived lists if it was on them. */
+export function addCategory(data: BudgetData, name: string, type: string): BudgetData {
+  if (!name || data.categories.includes(name)) return data;
+  return setCategoryType(
+    {
+      ...data,
+      categories: [...data.categories, name],
+      deletedCategories: forgetDeleted(data.deletedCategories, name),
+      archivedCategories: (data.archivedCategories ?? []).filter((c) => c !== name),
+    },
+    name,
+    type,
+  );
+}
+
+/** Removes a category: its transactions go back to untagged (a split using it is undone) and its rules are deleted. */
+export function removeCategory(data: BudgetData, name: string): BudgetData {
+  const rules = data.rules.filter((r) => r.category !== name);
+  const transactions = data.transactions.map((t) =>
+    t.splits?.some((p) => p.category === name)
+      ? withSplit(t, null)
+      : t.category === name
+        ? { ...t, category: null, categorySource: null }
+        : t,
+  );
+  return {
+    ...data,
+    categories: data.categories.filter((c) => c !== name),
+    deletedCategories: [...new Set([...(data.deletedCategories ?? []), name])],
+    archivedCategories: (data.archivedCategories ?? []).filter((c) => c !== name),
+    categoryTypes: Object.fromEntries(Object.entries(data.categoryTypes ?? {}).filter(([c]) => c !== name)),
+    rules,
+    transactions: applyRules(transactions, rules),
+  };
+}
+
+/** Archives a category, or brings it back. */
+export function setArchived(data: BudgetData, name: string, archived: boolean): BudgetData {
+  const others = (data.archivedCategories ?? []).filter((c) => c !== name);
+  return { ...data, archivedCategories: archived ? [...others, name] : others };
+}
+
+/** How many transactions (counting split parts) and rules use a category. */
+export function categoryUse(data: BudgetData, name: string): { transactions: number; rules: number } {
+  const transactions = data.transactions.filter((t) => t.category === name || t.splits?.some((p) => p.category === name)).length;
+  return { transactions, rules: data.rules.filter((r) => r.category === name).length };
 }
 
 /** Gives a category a type. */
@@ -197,7 +248,8 @@ export function loadData(): BudgetData {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return emptyData();
-    return migrate({ ...emptyData(), version: 1, ...JSON.parse(raw) });
+    // Saved data always has its own categories and groups; the old defaults are only for data from before there were any.
+    return migrate({ transactions: [], rules: [], categories: [...DEFAULT_CATEGORIES], version: 1, ...JSON.parse(raw) });
   } catch {
     return emptyData();
   }

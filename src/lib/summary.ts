@@ -119,22 +119,22 @@ export interface SpendingGroup<R> {
 type GroupSettings = Pick<BudgetData, 'types' | 'categoryTypes' | 'incomeGroups'>;
 
 /** Splits spending rows by group, in the user's order of Spending groups, each A to Z, then untagged. */
-export function groupSpending<R extends { category: string }>(rows: R[], types: GroupSettings): SpendingGroup<R>[] {
+export function groupSpending<R extends { category: string }>(rows: R[], types: GroupSettings, keepEmpty = false): SpendingGroup<R>[] {
   const byName = (a: R, b: R) => a.category.localeCompare(b.category, 'en', { sensitivity: 'base' });
   const tagged = rows.filter((r) => r.category !== UNTAGGED);
   const groups: SpendingGroup<R>[] = [
     ...spendingTypes(types).map((type) => ({ label: type, rows: tagged.filter((r) => categoryType(types, r.category) === type).sort(byName) })),
     { label: null, rows: rows.filter((r) => r.category === UNTAGGED) },
   ];
-  return groups.filter((g) => g.rows.length > 0);
+  return groups.filter((g) => g.rows.length > 0 || (keepEmpty && g.label !== null));
 }
 
 /** Splits income rows by Income group, in the user's order, each A to Z. */
-export function groupIncome<R extends { category: string }>(rows: R[], types: GroupSettings): { label: string; rows: R[] }[] {
+export function groupIncome<R extends { category: string }>(rows: R[], types: GroupSettings, keepEmpty = false): { label: string; rows: R[] }[] {
   const byName = (a: R, b: R) => a.category.localeCompare(b.category, 'en', { sensitivity: 'base' });
   return incomeTypes(types)
     .map((type) => ({ label: type, rows: rows.filter((r) => categoryType(types, r.category) === type).sort(byName) }))
-    .filter((g) => g.rows.length > 0);
+    .filter((g) => g.rows.length > 0 || keepEmpty);
 }
 
 /** "2026-03-01" -> "2026-03-02", in calendar days. */

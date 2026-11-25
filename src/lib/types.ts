@@ -43,6 +43,8 @@ export interface BudgetData {
   types?: string[];
   /** Groups whose categories are money in (Income kind) rather than spending. */
   incomeGroups?: string[];
+  /** Categories put away: kept, with their transactions, but left out of tagging lists, and out of the summary in years they have nothing. */
+  archivedCategories?: string[];
   /** Each category's group, by category name. */
   categoryTypes?: Record<string, string>;
   /** Types left out of the forecast: their categories' forecast starts at £0 instead of the average. */
@@ -88,16 +90,16 @@ export const DEFAULT_CATEGORIES = [
   'Other',
 ];
 
-/** The groups a new budget starts with, in the order the summary shows them. */
+/** The groups budgets saved before version 4 had, in the order the summary shows them. A new budget starts with none. */
 export const DEFAULT_TYPES = ['Income', 'Essential', 'Living', 'Discretionary'];
 /** The Income-kind groups a new budget starts with. */
 export const DEFAULT_INCOME_GROUPS = ['Income'];
 /** Which group each starting category is in, where it isn't the last Spending group. */
 export const DEFAULT_CATEGORY_TYPES: Record<string, string> = { Income: 'Income', Transfers: 'Income' };
 
-/** The user's groups, in their order. */
+/** The user's groups, in their order. Data saved before groups were the user's own has the old defaults. */
 export function typeList(data: Pick<BudgetData, 'types'>): string[] {
-  return data.types?.length ? data.types : DEFAULT_TYPES;
+  return data.types ?? DEFAULT_TYPES;
 }
 
 /** Whether a group's categories are money in rather than spending. */

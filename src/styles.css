@@ -722,8 +722,17 @@ table.summary.combined {
   --gap: 15px;
 }
 
-table.summary.combined :is(th, td):is(.budget-col, .diff-col, .ytd-col, .avg-col) {
+table.summary.combined :is(th, td):is(.budget-col, .diff-col) {
   background: var(--avg);
+}
+
+/* Total and Average stay white, like the actual months. */
+table.summary.combined :is(th, td):is(.ytd-col, .avg-col) {
+  background: var(--surface);
+}
+
+table.summary.combined tr.subtotal th:is(.ytd-col, .avg-col) {
+  background: var(--bg);
 }
 
 /* White separator columns: after the category names, after December and before the budget. */
@@ -1099,4 +1108,68 @@ tr.highlight td {
 
 button.link.danger-link {
   color: var(--danger);
+}
+
+/* Adding, archiving and removing categories straight from the summary. */
+table.summary.combined td.category-cell {
+  position: relative;
+}
+
+table.summary.combined .row-tools {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  display: none;
+  gap: 6px;
+  padding-left: 6px;
+  background: var(--surface);
+  font-size: 0.7rem;
+}
+
+table.summary.combined tr:is(:hover, :focus-within) .row-tools {
+  display: flex;
+}
+
+table.summary.combined .row-tools button.link {
+  padding: 0 2px;
+  color: var(--muted);
+}
+
+table.summary.combined .row-tools button.link:hover {
+  color: var(--accent);
+}
+
+table.summary.combined button.link.row-add {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+table.summary.combined button.link.row-add:hover {
+  color: var(--accent);
+}
+
+table.summary.combined tr.add-row td {
+  text-align: left;
+  background: var(--surface);
+}
+
+table.summary.combined tr.add-row form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  position: sticky;
+  left: 0;
+}
+
+table.summary.combined tr.add-row input {
+  width: 220px;
+}
+
+@media print {
+  table.summary.combined :is(.row-tools, .row-add, tr.add-row) {
+    display: none !important;
+  }
 }
