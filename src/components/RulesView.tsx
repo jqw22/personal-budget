@@ -10,9 +10,11 @@ import type { BudgetData, Rule } from '../lib/types';
 interface Props {
   data: BudgetData;
   onChange: (data: BudgetData) => void;
+  /** The Categories tab (categories and types) or the Rules tab (merchant rules and your data). */
+  part: 'categories' | 'rules';
 }
 
-export function RulesView({ data, onChange }: Props) {
+export function RulesView({ data, onChange, part }: Props) {
   const [newCategory, setNewCategory] = useState('');
   const [newType, setNewType] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
@@ -95,279 +97,286 @@ export function RulesView({ data, onChange }: Props) {
 
   return (
     <section>
-      <h2>Categories</h2>
-      <p className="muted">Click a category's name to rename it. Tagged transactions and rules follow the new name.</p>
-      <table className="categories">
-        <thead>
-          <tr>
-            <th>Category</th>
-            <th>Type</th>
-            <th className="num">Transactions</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {categories.map((c) => (
-            <tr key={c}>
-              <td>
-                {editing?.from === c ? (
-                  <input
-                    autoFocus
-                    aria-label={`Rename ${c}`}
-                    value={editing.to}
-                    onChange={(e) => setEditing({ from: c, to: e.target.value })}
-                    onBlur={finishRename}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') finishRename();
-                      if (e.key === 'Escape') setEditing(null);
-                    }}
-                  />
-                ) : NOT_SPENDING.includes(c) ? (
-                  c
-                ) : (
-                  <button className="link name" title={`Rename ${c}`} onClick={() => setEditing({ from: c, to: c })}>
-                    {c}
-                  </button>
-                )}
-              </td>
-              <td>
-                {NOT_SPENDING.includes(c) ? (
-                  <span className="muted">Not spending</span>
-                ) : (
-                  <select
-                    aria-label={`Type of ${c}`}
-                    value={categoryType(data, c)}
-                    onChange={(e) => onChange(setType(data, c, e.target.value))}
-                  >
-                    {types.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </td>
-              <td className="num muted">{counts.get(c) ?? 0}</td>
-              <td>
-                {/* Income and Transfers are built in: the summary has rows of its own for them. */}
-                {!NOT_SPENDING.includes(c) && (
-                  <button
-                    className="link"
-                    title={`Remove ${c}`}
-                    onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
-                  >
-                    ×
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {confirmRemove && (
-        <div className="warning">
-          <p>
-            <strong>{confirmRemove}</strong> is used by {plural(counts.get(confirmRemove) ?? 0, 'transaction')}
-            {rulesFor(confirmRemove) > 0 && ` and ${plural(rulesFor(confirmRemove), 'merchant rule')}`}. Removing it
-            leaves those transactions untagged
-            {rulesFor(confirmRemove) > 0 && ` and deletes the rule${rulesFor(confirmRemove) === 1 ? '' : 's'}`}.
-          </p>
-          <div className="actions">
-            <button
-              className="danger"
-              onClick={() => {
-                removeCategory(confirmRemove);
-                setConfirmRemove(null);
-              }}
-            >
-              Remove {confirmRemove}
-            </button>
-            <button onClick={() => setConfirmRemove(null)}>Cancel</button>
-          </div>
-        </div>
-      )}
-      <form
-        className="inline"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addCategory();
-        }}
-      >
-        <input placeholder="New category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
-        <select aria-label="New category type" required value={newType} onChange={(e) => setNewType(e.target.value)}>
-          <option value="" disabled>
-            Type…
-          </option>
-          {types.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-        <button type="submit" disabled={!newCategory.trim() || !newType}>
-          Add
-        </button>
-      </form>
-
-      <h2>Types</h2>
-      <p className="muted">
-        The summary groups spending by type, in this order. Click a type's name to rename it.
-      </p>
-      <table className="categories types">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th className="num">Categories</th>
-            <th>Order</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {types.map((type, i) => (
-            <tr key={type}>
-              <td>
-                {editingType?.from === type ? (
-                  <input
-                    autoFocus
-                    aria-label={`Rename ${type}`}
-                    value={editingType.to}
-                    onChange={(e) => setEditingType({ from: type, to: e.target.value })}
-                    onBlur={finishTypeRename}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') finishTypeRename();
-                      if (e.key === 'Escape') setEditingType(null);
-                    }}
-                  />
-                ) : (
-                  <button className="link name" title={`Rename ${type}`} onClick={() => setEditingType({ from: type, to: type })}>
-                    {type}
-                  </button>
-                )}
-              </td>
-              <td className="num muted">{categoriesOfType(type)}</td>
-              <td className="order">
-                <button className="link" title={`Move ${type} up`} disabled={i === 0} onClick={() => onChange(moveType(data, type, -1))}>
-                  ↑
-                </button>
-                <button
-                  className="link"
-                  title={`Move ${type} down`}
-                  disabled={i === types.length - 1}
-                  onClick={() => onChange(moveType(data, type, 1))}
-                >
-                  ↓
-                </button>
-              </td>
-              <td>
-                <button
-                  className="link"
-                  title={categoriesOfType(type) ? `Give ${type}'s categories another type before removing it` : `Remove ${type}`}
-                  disabled={categoriesOfType(type) > 0 || types.length === 1}
-                  onClick={() => onChange(removeType(data, type))}
-                >
-                  ×
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <form
-        className="inline"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addNewType();
-        }}
-      >
-        <input placeholder="New type" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} />
-        <button type="submit" disabled={!newTypeName.trim() || types.includes(newTypeName.trim())}>
-          Add
-        </button>
-      </form>
-
-      <h2>Merchant rules</h2>
-      <p className="muted">
-        A rule tags every transaction whose merchant contains the text. Shorten the text to cover more, for example
-        "HOME BARGAINS" matches every branch. Transactions you tagged by hand are never changed by a rule.
-      </p>
-      {data.rules.length === 0 ? (
-        <p className="muted">No rules yet. They're created as you tag transactions.</p>
-      ) : (
-        <table>
+      {part === 'categories' && (
+        <>
+        <h2>Categories</h2>
+        <p className="muted">Click a category's name to rename it. Tagged transactions and rules follow the new name.</p>
+        <table className="categories">
           <thead>
             <tr>
-              <th aria-sort={ruleSort === 'merchant' ? 'ascending' : undefined}>
-                <button className="link sort" title="Sort by merchant, A to Z" onClick={() => setRuleSort('merchant')}>
-                  Merchant contains{ruleSort === 'merchant' && ' ▲'}
-                </button>
-              </th>
-              <th aria-sort={ruleSort === 'category' ? 'ascending' : undefined}>
-                <button className="link sort" title="Sort by category, A to Z, then merchant" onClick={() => setRuleSort('category')}>
-                  Category{ruleSort === 'category' && ' ▲'}
-                </button>
-              </th>
+              <th>Category</th>
+              <th>Type</th>
+              <th className="num">Transactions</th>
               <th />
             </tr>
           </thead>
           <tbody>
-            {[...data.rules]
-              .sort((a, b) => {
-                const byMerchant = a.match.localeCompare(b.match, 'en', { sensitivity: 'base' });
-                return ruleSort === 'category' ? a.category.localeCompare(b.category, 'en', { sensitivity: 'base' }) || byMerchant : byMerchant;
-              })
-              .map((r) => (
-                <tr key={r.id}>
-                  <td>
+            {categories.map((c) => (
+              <tr key={c}>
+                <td>
+                  {editing?.from === c ? (
                     <input
-                      value={r.match}
-                      onChange={(e) =>
-                        setRules(data.rules.map((x) => (x.id === r.id ? { ...x, match: e.target.value } : x)))
-                      }
+                      autoFocus
+                      aria-label={`Rename ${c}`}
+                      value={editing.to}
+                      onChange={(e) => setEditing({ from: c, to: e.target.value })}
+                      onBlur={finishRename}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') finishRename();
+                        if (e.key === 'Escape') setEditing(null);
+                      }}
                     />
-                  </td>
-                  <td>
+                  ) : NOT_SPENDING.includes(c) ? (
+                    c
+                  ) : (
+                    <button className="link name" title={`Rename ${c}`} onClick={() => setEditing({ from: c, to: c })}>
+                      {c}
+                    </button>
+                  )}
+                </td>
+                <td>
+                  {NOT_SPENDING.includes(c) ? (
+                    <span className="muted">Not spending</span>
+                  ) : (
                     <select
-                      value={r.category}
-                      onChange={(e) =>
-                        setRules(data.rules.map((x) => (x.id === r.id ? { ...x, category: e.target.value } : x)))
-                      }
+                      aria-label={`Type of ${c}`}
+                      value={categoryType(data, c)}
+                      onChange={(e) => onChange(setType(data, c, e.target.value))}
                     >
-                      {categories.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
+                      {types.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
                         </option>
                       ))}
                     </select>
-                  </td>
-                  <td>
-                    <button className="link" onClick={() => setRules(data.rules.filter((x) => x.id !== r.id))}>
-                      Delete
+                  )}
+                </td>
+                <td className="num muted">{counts.get(c) ?? 0}</td>
+                <td>
+                  {/* Income and Transfers are built in: the summary has rows of its own for them. */}
+                  {!NOT_SPENDING.includes(c) && (
+                    <button
+                      className="link"
+                      title={`Remove ${c}`}
+                      onClick={() => (inUse(c) ? setConfirmRemove(c) : removeCategory(c))}
+                    >
+                      ×
                     </button>
-                  </td>
-                </tr>
-              ))}
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
-      )}
+        {confirmRemove && (
+          <div className="warning">
+            <p>
+              <strong>{confirmRemove}</strong> is used by {plural(counts.get(confirmRemove) ?? 0, 'transaction')}
+              {rulesFor(confirmRemove) > 0 && ` and ${plural(rulesFor(confirmRemove), 'merchant rule')}`}. Removing it
+              leaves those transactions untagged
+              {rulesFor(confirmRemove) > 0 && ` and deletes the rule${rulesFor(confirmRemove) === 1 ? '' : 's'}`}.
+            </p>
+            <div className="actions">
+              <button
+                className="danger"
+                onClick={() => {
+                  removeCategory(confirmRemove);
+                  setConfirmRemove(null);
+                }}
+              >
+                Remove {confirmRemove}
+              </button>
+              <button onClick={() => setConfirmRemove(null)}>Cancel</button>
+            </div>
+          </div>
+        )}
+        <form
+          className="inline"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addCategory();
+          }}
+        >
+          <input placeholder="New category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
+          <select aria-label="New category type" required value={newType} onChange={(e) => setNewType(e.target.value)}>
+            <option value="" disabled>
+              Type…
+            </option>
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={!newCategory.trim() || !newType}>
+            Add
+          </button>
+        </form>
 
-      <h2>Your data</h2>
-      <p className="muted">Everything is saved in this browser for now.</p>
-      {confirmReset ? (
-        <p>
-          Delete all transactions, rules and categories?{' '}
-          <button
-            className="danger"
-            onClick={() => {
-              onChange(emptyData());
-              setConfirmReset(false);
-            }}
-          >
-            Yes, delete everything
-          </button>{' '}
-          <button onClick={() => setConfirmReset(false)}>Cancel</button>
+        <h2>Types</h2>
+        <p className="muted">
+          The summary groups spending by type, in this order. Click a type's name to rename it.
         </p>
-      ) : (
-        <button onClick={() => setConfirmReset(true)}>Delete all data…</button>
+        <table className="categories types">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th className="num">Categories</th>
+              <th>Order</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {types.map((type, i) => (
+              <tr key={type}>
+                <td>
+                  {editingType?.from === type ? (
+                    <input
+                      autoFocus
+                      aria-label={`Rename ${type}`}
+                      value={editingType.to}
+                      onChange={(e) => setEditingType({ from: type, to: e.target.value })}
+                      onBlur={finishTypeRename}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') finishTypeRename();
+                        if (e.key === 'Escape') setEditingType(null);
+                      }}
+                    />
+                  ) : (
+                    <button className="link name" title={`Rename ${type}`} onClick={() => setEditingType({ from: type, to: type })}>
+                      {type}
+                    </button>
+                  )}
+                </td>
+                <td className="num muted">{categoriesOfType(type)}</td>
+                <td className="order">
+                  <button className="link" title={`Move ${type} up`} disabled={i === 0} onClick={() => onChange(moveType(data, type, -1))}>
+                    ↑
+                  </button>
+                  <button
+                    className="link"
+                    title={`Move ${type} down`}
+                    disabled={i === types.length - 1}
+                    onClick={() => onChange(moveType(data, type, 1))}
+                  >
+                    ↓
+                  </button>
+                </td>
+                <td>
+                  <button
+                    className="link"
+                    title={categoriesOfType(type) ? `Give ${type}'s categories another type before removing it` : `Remove ${type}`}
+                    disabled={categoriesOfType(type) > 0 || types.length === 1}
+                    onClick={() => onChange(removeType(data, type))}
+                  >
+                    ×
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <form
+          className="inline"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addNewType();
+          }}
+        >
+          <input placeholder="New type" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} />
+          <button type="submit" disabled={!newTypeName.trim() || types.includes(newTypeName.trim())}>
+            Add
+          </button>
+        </form>
+        </>
+      )}
+      {part === 'rules' && (
+        <>
+        <h2>Merchant rules</h2>
+        <p className="muted">
+          A rule tags every transaction whose merchant contains the text. Shorten the text to cover more, for example
+          "HOME BARGAINS" matches every branch. Transactions you tagged by hand are never changed by a rule.
+        </p>
+        {data.rules.length === 0 ? (
+          <p className="muted">No rules yet. They're created as you tag transactions.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th aria-sort={ruleSort === 'merchant' ? 'ascending' : undefined}>
+                  <button className="link sort" title="Sort by merchant, A to Z" onClick={() => setRuleSort('merchant')}>
+                    Merchant contains{ruleSort === 'merchant' && ' ▲'}
+                  </button>
+                </th>
+                <th aria-sort={ruleSort === 'category' ? 'ascending' : undefined}>
+                  <button className="link sort" title="Sort by category, A to Z, then merchant" onClick={() => setRuleSort('category')}>
+                    Category{ruleSort === 'category' && ' ▲'}
+                  </button>
+                </th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {[...data.rules]
+                .sort((a, b) => {
+                  const byMerchant = a.match.localeCompare(b.match, 'en', { sensitivity: 'base' });
+                  return ruleSort === 'category' ? a.category.localeCompare(b.category, 'en', { sensitivity: 'base' }) || byMerchant : byMerchant;
+                })
+                .map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <input
+                        value={r.match}
+                        onChange={(e) =>
+                          setRules(data.rules.map((x) => (x.id === r.id ? { ...x, match: e.target.value } : x)))
+                        }
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={r.category}
+                        onChange={(e) =>
+                          setRules(data.rules.map((x) => (x.id === r.id ? { ...x, category: e.target.value } : x)))
+                        }
+                      >
+                        {categories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <button className="link" onClick={() => setRules(data.rules.filter((x) => x.id !== r.id))}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        )}
+
+        <h2>Your data</h2>
+        <p className="muted">Everything is saved in this browser for now.</p>
+        {confirmReset ? (
+          <p>
+            Delete all transactions, rules and categories?{' '}
+            <button
+              className="danger"
+              onClick={() => {
+                onChange(emptyData());
+                setConfirmReset(false);
+              }}
+            >
+              Yes, delete everything
+            </button>{' '}
+            <button onClick={() => setConfirmReset(false)}>Cancel</button>
+          </p>
+        ) : (
+          <button onClick={() => setConfirmReset(true)}>Delete all data…</button>
+        )}
+        </>
       )}
     </section>
   );

@@ -11,7 +11,7 @@ import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
 import { useSync } from './lib/useSync';
 
-type Tab = 'summary' | 'insights' | 'import' | 'transactions' | 'rules' | 'account';
+type Tab = 'summary' | 'insights' | 'import' | 'transactions' | 'categories' | 'rules' | 'account';
 /** The Insights tab is hidden for now; its code stays so it can come back. */
 const SHOW_INSIGHTS = false;
 
@@ -58,8 +58,11 @@ export function App() {
           <button className={tab === 'import' ? 'active' : ''} onClick={() => openTab('import')}>
             Import
           </button>
+          <button className={tab === 'categories' ? 'active' : ''} onClick={() => openTab('categories')}>
+            Categories
+          </button>
           <button className={tab === 'rules' ? 'active' : ''} onClick={() => openTab('rules')}>
-            Categories & rules
+            Rules
           </button>
           <button className={tab === 'account' ? 'active' : ''} onClick={() => openTab('account')}>
             Account
@@ -101,7 +104,8 @@ export function App() {
         )}
         {tab === 'import' && <ImportView data={data} onChange={setData} onDone={() => openTab('transactions')} />}
         {tab === 'transactions' && <TransactionsView data={data} onChange={setData} initialFilter={txFilter} />}
-        {tab === 'rules' && <RulesView data={data} onChange={setData} />}
+        {tab === 'categories' && <RulesView data={data} onChange={setData} part="categories" />}
+        {tab === 'rules' && <RulesView data={data} onChange={setData} part="rules" />}
         {tab === 'account' && <AccountView sync={sync} data={data} onChange={setData} />}
       </main>
     </div>
