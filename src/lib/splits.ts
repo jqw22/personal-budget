@@ -27,13 +27,9 @@ export function expandSplits(transactions: Transaction[]): Transaction[] {
   );
 }
 
-/** Most parts one transaction can be split into. */
-export const MAX_PARTS = 8;
-
 /** Why these parts can't split this transaction, or null when they can. */
 export function splitProblem(t: Transaction, parts: Split[]): string | null {
   if (parts.length < 2) return 'Split into at least two parts.';
-  if (parts.length > MAX_PARTS) return `Split into at most ${MAX_PARTS} parts.`;
   if (parts.some((p) => !p.category)) return 'Choose a category for each part.';
   if (parts.some((p) => p.amount === 0 || Math.sign(p.amount) !== Math.sign(t.amount))) return 'Each part must be more than £0.';
   if (parts.reduce((total, p) => total + p.amount, 0) !== t.amount) return 'The parts must add up to the whole amount.';

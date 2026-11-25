@@ -4,7 +4,7 @@ import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, findRule, upsertRule } from '../lib/rules';
 import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
 import { parseMoney } from '../lib/importer';
-import { amountIn, isTagged, MAX_PARTS, splitProblem, withSplit } from '../lib/splits';
+import { amountIn, isTagged, splitProblem, withSplit } from '../lib/splits';
 import { sortedCategories } from '../lib/store';
 import { categoryType, incomeTypes, spendingTypes, type BudgetData, type Split, type Transaction } from '../lib/types';
 
@@ -347,7 +347,7 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
 }
 
 /**
- * Splits one transaction into up to eight parts with their own categories. Every part's amount but
+ * Splits one transaction into as many parts as needed, each with its own category. Every part's amount but
  * the last is typed in, and the last is whatever is left, so the parts always add up to the whole.
  */
 function SplitEditor({
@@ -419,17 +419,15 @@ function SplitEditor({
         </div>
       ))}
       <div className="split-actions">
-        {rows.length < MAX_PARTS && (
-          <button
-            className="link split-add"
-            // The new part goes before the last, which keeps taking whatever is left.
-            onClick={() => setRows([...rows.slice(0, -1), { amount: '', category: '' }, rows[rows.length - 1]])}
-          >
-            + Add part
-          </button>
-        )}
+        <button
+          className="link split-add"
+          // The new part goes before the last, which keeps taking whatever is left.
+          onClick={() => setRows([...rows.slice(0, -1), { amount: '', category: '' }, rows[rows.length - 1]])}
+        >
+          + Add part
+        </button>
         <span className="muted small">
-          {problem ?? (parts ? `Adds up to ${formatMoney(t.amount)}.` : `Split ${formatMoney(t.amount)} into up to ${MAX_PARTS} parts.`)}
+          {problem ?? (parts ? `Adds up to ${formatMoney(t.amount)}.` : `Split ${formatMoney(t.amount)} into as many parts as you need.`)}
         </span>
         <button className="primary" disabled={!parts || problem !== null} onClick={() => parts && onSave(parts)}>
           Save split

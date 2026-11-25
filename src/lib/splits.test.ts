@@ -27,7 +27,8 @@ describe('splits', () => {
     expect(splitProblem(t, parts)).toBeNull();
     const eight = Array.from({ length: 8 }, (_, i) => ({ amount: -625, category: `C${i}` }));
     expect(splitProblem(t, eight)).toBeNull();
-    expect(splitProblem(t, [...eight.slice(1), { amount: -312, category: 'X' }, { amount: -313, category: 'Y' }])).toMatch(/at most 8/);
+    // Any number of parts is fine.
+    expect(splitProblem(t, [...eight.slice(1), { amount: -312, category: 'X' }, { amount: -313, category: 'Y' }])).toBeNull();
     expect(splitProblem(t, [{ amount: -3000, category: 'Living/Food' }, { amount: -1000, category: 'Going Out' }])).toMatch(/add up/);
     expect(splitProblem(t, [{ amount: -6000, category: 'Living/Food' }, { amount: 1000, category: 'Going Out' }])).toMatch(/more than/);
     expect(splitProblem(t, [{ amount: -3000, category: 'Living/Food' }, { amount: -2000, category: '' }])).toMatch(/category/);
