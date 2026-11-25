@@ -18,9 +18,12 @@ export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
   const [tab, setTab] = useState<Tab>(() => (data.transactions.length ? 'summary' : 'transactions'));
   const [txFilter, setTxFilter] = useState<TransactionFilter | undefined>();
+  /** The rule to scroll to and highlight when the Rules tab opens from a transaction. */
+  const [focusRule, setFocusRule] = useState<string | null>(null);
 
   function openTab(next: Tab) {
     setTxFilter(undefined);
+    setFocusRule(null);
     setTab(next);
   }
 
@@ -98,9 +101,19 @@ export function App() {
             onOpenAccount={() => openTab('account')}
           />
         )}
-        {tab === 'transactions' && <TransactionsView data={data} onChange={setData} initialFilter={txFilter} />}
+        {tab === 'transactions' && (
+          <TransactionsView
+            data={data}
+            onChange={setData}
+            initialFilter={txFilter}
+            onOpenRule={(id) => {
+              setFocusRule(id);
+              setTab('rules');
+            }}
+          />
+        )}
         {tab === 'categories' && <RulesView data={data} onChange={setData} part="categories" />}
-        {tab === 'rules' && <RulesView data={data} onChange={setData} part="rules" />}
+        {tab === 'rules' && <RulesView data={data} onChange={setData} part="rules" focusRule={focusRule} />}
         {tab === 'account' && <AccountView sync={sync} data={data} onChange={setData} />}
       </main>
     </div>

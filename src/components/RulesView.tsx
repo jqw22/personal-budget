@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
 import { addType, moveType, removeType, renameCategory, renameType, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
@@ -12,9 +12,11 @@ interface Props {
   onChange: (data: BudgetData) => void;
   /** The Categories tab (categories and types) or the Rules tab (merchant rules). */
   part: 'categories' | 'rules';
+  /** A rule to bring into view and highlight, e.g. after clicking "auto" on a transaction. */
+  focusRule?: string | null;
 }
 
-export function RulesView({ data, onChange, part }: Props) {
+export function RulesView({ data, onChange, part, focusRule }: Props) {
   const [newCategory, setNewCategory] = useState('');
   const [newType, setNewType] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
@@ -23,6 +25,11 @@ export function RulesView({ data, onChange, part }: Props) {
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   /** Merchant rules A to Z by merchant, or grouped by category. */
   const [ruleSort, setRuleSort] = useState<'merchant' | 'category'>('merchant');
+  /** The rule whose Delete was clicked, waiting for a yes. */
+  const [confirmRuleDelete, setConfirmRuleDelete] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusRule) document.getElementById(`rule-${focusRule}`)?.scrollIntoView({ block: 'center' });
+  }, [focusRule]);
 
   function setRules(rules: Rule[]) {
     onChange({ ...data, rules, transactions: applyRules(data.transactions, rules) });
@@ -322,9 +329,10 @@ export function RulesView({ data, onChange, part }: Props) {
                   return ruleSort === 'category' ? a.category.localeCompare(b.category, 'en', { sensitivity: 'base' }) || byMerchant : byMerchant;
                 })
                 .map((r) => (
-                  <tr key={r.id}>
+                  <tr key={r.id} id={`rule-${r.id}`} className={r.id === focusRule ? 'highlight' : ''}>
                     <td>
                       <input
+                        autoFocus={r.id === focusRule}
                         value={r.match}
                         onChange={(e) =>
                           setRules(data.rules.map((x) => (x.id === r.id ? { ...x, match: e.target.value } : x)))
@@ -345,10 +353,28 @@ export function RulesView({ data, onChange, part }: Props) {
                         ))}
                       </select>
                     </td>
-                    <td>
-                      <button className="link" onClick={() => setRules(data.rules.filter((x) => x.id !== r.id))}>
-                        Delete
-                      </button>
+                    <td className="nowrap">
+                      {confirmRuleDelete === r.id ? (
+                        <>
+                          Delete this rule?{' '}
+                          <button
+                            className="link danger-link"
+                            onClick={() => {
+                              setRules(data.rules.filter((x) => x.id !== r.id));
+                              setConfirmRuleDelete(null);
+                            }}
+                          >
+                            Yes
+                          </button>{' '}
+                          <button className="link" onClick={() => setConfirmRuleDelete(null)}>
+                            No
+                          </button>
+                        </>
+                      ) : (
+                        <button className="link" onClick={() => setConfirmRuleDelete(r.id)}>
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

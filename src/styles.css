@@ -907,7 +907,6 @@ button.link.figure:focus-visible {
 
 /* Splitting a transaction into parts. */
 button.link.split-button {
-  margin-left: 6px;
   font-size: 0.8rem;
   text-decoration: underline;
 }
@@ -955,7 +954,6 @@ table.transactions tr.split-row td {
 button.link.note,
 button.link.note-add {
   display: inline;
-  margin-left: 10px;
   padding: 0;
   font-size: inherit;
   text-align: left;
@@ -986,7 +984,6 @@ input.note-input {
   display: inline-block;
   width: 16em;
   max-width: 100%;
-  margin-left: 10px;
   font-size: inherit;
 }
 
@@ -1142,19 +1139,31 @@ table.summary.combined :is(tr.section, tr.halves) th {
   font-size: calc(0.8rem - 1pt);
 }
 
-/* Merchant and amount sit close together; the category column takes any spare width. */
-table.transactions thead tr:first-child > th:nth-child(1),
-table.transactions thead tr:first-child > th:nth-child(3) {
+/* Merchant and amount sit close together; the note column takes any spare width. */
+table.transactions tr.col-heads > th:is(:nth-child(1), :nth-child(3), :nth-child(5), :nth-child(6)) {
   width: 1%;
   white-space: nowrap;
 }
 
-table.transactions thead tr:first-child > th:nth-child(2) {
+table.transactions tr.col-heads > th:nth-child(2) {
   min-width: 160px;
 }
 
-table.transactions thead tr:first-child > th:nth-child(4) {
+table.transactions tr.col-heads > th:nth-child(7) {
   width: 100%;
+}
+
+/* Auto opens the rule that tagged the transaction. */
+button.link.auto-link {
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+button.link.auto-link:hover,
+button.link.auto-link:focus-visible {
+  color: var(--accent);
 }
 
 /* A page heading with a button at its right. */
@@ -1172,4 +1181,13 @@ table.transactions thead tr:first-child > th:nth-child(4) {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
+}
+
+/* A rule opened from a transaction's "auto". */
+tr.highlight td {
+  background: var(--warn-bg);
+}
+
+button.link.danger-link {
+  color: var(--danger);
 }

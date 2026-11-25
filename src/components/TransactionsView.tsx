@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { AutoTag } from './AutoTag';
 import { ImportView } from './ImportView';
 import { formatDate, formatMoney, formatMonth } from '../lib/format';
-import { applyRules, upsertRule } from '../lib/rules';
+import { applyRules, findRule, upsertRule } from '../lib/rules';
 import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
 import { parseMoney } from '../lib/importer';
 import { amountIn, isTagged, MAX_PARTS, splitProblem, withSplit } from '../lib/splits';
@@ -46,6 +46,8 @@ interface Props {
   onChange: (data: BudgetData) => void;
   /** Filters to open with, e.g. when coming from the summary. */
   initialFilter?: TransactionFilter;
+  /** Opens the Rules tab at this rule, from a transaction's Auto link. */
+  onOpenRule?: (ruleId: string) => void;
 }
 
 /** Category filter value that shows only untagged transactions. */
@@ -62,7 +64,7 @@ type Sort = 'date' | 'amount-out' | 'amount-in' | 'merchant';
 
 const NEXT_AMOUNT_SORT: Record<Sort, Sort> = { date: 'amount-out', 'amount-out': 'amount-in', 'amount-in': 'date', merchant: 'amount-out' };
 
-export function TransactionsView({ data, onChange, initialFilter }: Props) {
+export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: Props) {
   const months = useMemo(
     () => [...new Set(data.transactions.map((t) => t.date.slice(0, 7)))].sort().reverse(),
     [data.transactions],
@@ -214,7 +216,19 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
       <div className="table-wrap">
         <table className="transactions">
           <thead>
-            <tr>
+            {shown.length > 0 && (
+              <tr className="total-row">
+                <th colSpan={2}>
+                  Total of {shown.length} transaction{shown.length === 1 ? '' : 's'}
+                </th>
+                <th className="num">
+                  {/* Filtered to one category, a split counts only its parts in that category. */}
+                  {formatMoney(shown.reduce((total, t) => total + (category === 'all' || category === UNTAGGED_FILTER ? t.amount : amountIn(t, category)), 0))}
+                </th>
+                <th colSpan={4} />
+              </tr>
+            )}
+            <tr className="col-heads">
               <th aria-sort={sort === 'date' ? 'descending' : undefined}>
                 <button className="link sort" title="Sort by date, newest first" onClick={() => setSort('date')}>
                   Date{sort === 'date' && ' ▼'}
@@ -237,21 +251,12 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                 </button>
               </th>
               <th>Category</th>
+              <th>Auto</th>
+              <th>Split</th>
+              <th>Note</th>
             </tr>
           </thead>
           <tbody>
-            {shown.length > 0 && (
-              <tr className="total-row">
-                <th colSpan={2}>
-                  Total of {shown.length} transaction{shown.length === 1 ? '' : 's'}
-                </th>
-                <th className="num">
-                  {/* Filtered to one category, a split counts only its parts in that category. */}
-                  {formatMoney(shown.reduce((total, t) => total + (category === 'all' || category === UNTAGGED_FILTER ? t.amount : amountIn(t, category)), 0))}
-                </th>
-                <th />
-              </tr>
-            )}
             {shown.map((t) => (
               <Fragment key={t.id}>
                 <tr className={isTagged(t) ? '' : 'untagged'}>
@@ -275,7 +280,22 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                         <CategoryOptions groups={groups} />
                       </select>
                     )}
-                    {t.categorySource === 'rule' && <span className="hint" title="Tagged by a merchant rule">auto</span>}
+                  </td>
+                  <td className="nowrap">
+                    {t.categorySource === 'rule' && (
+                      <button
+                        className="link auto-link"
+                        title="Tagged by a merchant rule: open the rule to edit it"
+                        onClick={() => {
+                          const rule = findRule(data.rules, t.merchant);
+                          if (rule) onOpenRule?.(rule.id);
+                        }}
+                      >
+                        Auto
+                      </button>
+                    )}
+                  </td>
+                  <td className="nowrap">
                     <button
                       className="link split-button"
                       title={t.splits?.length ? 'Change or remove this split' : 'Split into parts with different categories'}
@@ -283,6 +303,8 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                     >
                       {t.splits?.length ? 'Edit split' : 'Split'}
                     </button>
+                  </td>
+                  <td className="note-cell">
                     {noting?.id === t.id ? (
                       <input
                         className="note-input"
@@ -310,7 +332,7 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
                 </tr>
                 {splitting === t.id && (
                   <tr className="split-row">
-                    <td colSpan={4}>
+                    <td colSpan={7}>
                       <SplitEditor t={t} groups={groups} onSave={(parts) => split(t, parts)} onCancel={() => setSplitting(null)} />
                     </td>
                   </tr>
