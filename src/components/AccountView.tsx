@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { newSecretKey, npub } from '../lib/nostr';
+import { emptyData } from '../lib/store';
 import type { BudgetData } from '../lib/types';
 import type { useSync } from '../lib/useSync';
 
@@ -37,6 +38,7 @@ export function AccountView({ sync, data, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [relays, setRelays] = useState(account.relays.join('\n'));
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   async function attempt(action: () => Promise<void>) {
     setError(null);
@@ -55,6 +57,30 @@ export function AccountView({ sync, data, onChange }: Props) {
     .filter((r) => /^wss?:\/\/./.test(r));
 
   const claudeSettings = <ClaudeKey data={data} onChange={onChange} signedIn={Boolean(signer)} />;
+
+  const dataSettings = (
+    <>
+      <h2>Your data</h2>
+      <p className="muted">Everything is saved in this browser{signer ? ' and synced to your relays' : ''}.</p>
+      {confirmReset ? (
+        <p>
+          Delete all transactions, rules and categories?{' '}
+          <button
+            className="danger"
+            onClick={() => {
+              onChange(emptyData());
+              setConfirmReset(false);
+            }}
+          >
+            Yes, delete everything
+          </button>{' '}
+          <button onClick={() => setConfirmReset(false)}>Cancel</button>
+        </p>
+      ) : (
+        <button onClick={() => setConfirmReset(true)}>Delete all data…</button>
+      )}
+    </>
+  );
 
   const relaySettings = (
     <>
@@ -111,6 +137,7 @@ export function AccountView({ sync, data, onChange }: Props) {
         )}
         {claudeSettings}
         {relaySettings}
+        {dataSettings}
       </section>
     );
   }
@@ -179,6 +206,7 @@ export function AccountView({ sync, data, onChange }: Props) {
 
       {claudeSettings}
       {relaySettings}
+      {dataSettings}
     </section>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { expandSplits, withSplit } from '../lib/splits';
 import { applyRules } from '../lib/rules';
-import { addType, emptyData, moveType, removeType, renameCategory, renameType, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
+import { addType, moveType, removeType, renameCategory, renameType, setCategoryType, sortedCategories, forgetDeleted } from '../lib/store';
 import { categoryType, typeList } from '../lib/types';
 import { NOT_SPENDING } from '../lib/summary';
 import type { BudgetData, Rule } from '../lib/types';
@@ -10,7 +10,7 @@ import type { BudgetData, Rule } from '../lib/types';
 interface Props {
   data: BudgetData;
   onChange: (data: BudgetData) => void;
-  /** The Categories tab (categories and types) or the Rules tab (merchant rules and your data). */
+  /** The Categories tab (categories and types) or the Rules tab (merchant rules). */
   part: 'categories' | 'rules';
 }
 
@@ -19,7 +19,6 @@ export function RulesView({ data, onChange, part }: Props) {
   const [newType, setNewType] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
   const [editingType, setEditingType] = useState<{ from: string; to: string } | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
   const [editing, setEditing] = useState<{ from: string; to: string } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   /** Merchant rules A to Z by merchant, or grouped by category. */
@@ -355,26 +354,6 @@ export function RulesView({ data, onChange, part }: Props) {
                 ))}
             </tbody>
           </table>
-        )}
-
-        <h2>Your data</h2>
-        <p className="muted">Everything is saved in this browser for now.</p>
-        {confirmReset ? (
-          <p>
-            Delete all transactions, rules and categories?{' '}
-            <button
-              className="danger"
-              onClick={() => {
-                onChange(emptyData());
-                setConfirmReset(false);
-              }}
-            >
-              Yes, delete everything
-            </button>{' '}
-            <button onClick={() => setConfirmReset(false)}>Cancel</button>
-          </p>
-        ) : (
-          <button onClick={() => setConfirmReset(true)}>Delete all data…</button>
         )}
         </>
       )}
