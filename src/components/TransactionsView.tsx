@@ -173,10 +173,18 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
       <div className="filters">
         <select value={month} onChange={(e) => setMonth(e.target.value)}>
           <option value="all">All months</option>
-          {months.map((m) => (
-            <option key={m} value={m}>
-              {formatMonth(m)}
-            </option>
+          {/* Each year, newest first, followed by its months. */}
+          {[...new Set(months.map((m) => m.slice(0, 4)))].map((y) => (
+            <Fragment key={y}>
+              <option value={y}>All of {y}</option>
+              {months
+                .filter((m) => m.startsWith(y))
+                .map((m) => (
+                  <option key={m} value={m}>
+                    {formatMonth(m)}
+                  </option>
+                ))}
+            </Fragment>
           ))}
         </select>
         <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">

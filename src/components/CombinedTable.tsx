@@ -230,7 +230,20 @@ export function CombinedTable({ data, year, month, count, forecastCount, opening
               )}
             </td>
           ))}
-          <td className="num ytd-col">{formatPounds(r.ytd)}</td>
+          <td className="num ytd-col">
+            {/* Opens the whole year's transactions behind the actual months. */}
+            {r.actual.some((n) => n !== 0) ? (
+              <button
+                className="link figure"
+                title={`See ${r.category === UNTAGGED ? 'untagged' : r.category} transactions in ${year}`}
+                onClick={() => onShowTransactions(year, r.category === UNTAGGED ? null : r.category)}
+              >
+                {formatPounds(r.ytd)}
+              </button>
+            ) : (
+              formatPounds(r.ytd)
+            )}
+          </td>
           {r.category === UNTAGGED ? <td className="num diff-col" /> : <td className="num diff-col">{formatPounds(budget(r.category) - r.ytd)}</td>}
         </tr>
       ))}
