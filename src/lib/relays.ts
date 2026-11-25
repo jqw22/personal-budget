@@ -11,6 +11,28 @@ const EMPTY = JSON.stringify({ transactions: [] });
 /** Called with chunks another device saved, and what relays had for them before. */
 export type RemoteChanges = (incoming: Map<string, string>, base: Map<string, string>) => void;
 
+/** How one relay took the most recent save: how many records it accepted, and why it turned any down. */
+export interface SaveResult {
+  accepted: number;
+  failed: number;
+  error?: string;
+}
+
+/** What one relay serves back, compared with the latest copy of each record this device knows about. */
+export interface RelayCheck {
+  url: string;
+  connected: boolean;
+  /** Records this device knows about. */
+  expected: number;
+  /** How many of them the relay sent back, in any version. */
+  held: number;
+  /** How many of those are an older version than the latest. */
+  behind: number;
+}
+
+/** Called each time a relay answers a save. */
+export type SaveResults = (results: Map<string, SaveResult>) => void;
+
 /**
  * Keeps an encrypted copy of the budget on Nostr relays. Remembers what the
  * relays already have, so saving only uploads the parts that changed, and
@@ -26,12 +48,54 @@ export class RelaySync {
   /** Relay work runs one step at a time, so the same change is never sent or applied twice. */
   private queue: Promise<unknown> = Promise.resolve();
   private subscription: { close: () => void } | null = null;
+  /** How each relay took the most recent save. */
+  private results = new Map<string, SaveResult>();
 
   constructor(
     private signer: Signer,
     private relays: string[],
     private onRemote: RemoteChanges,
+    private onSaveResults: SaveResults = () => {},
   ) {}
+
+  /** Records one relay's answer to one record of the current save. */
+  private record(url: string, outcome: PromiseSettledResult<string>) {
+    const was = this.results.get(url) ?? { accepted: 0, failed: 0 };
+    this.results.set(
+      url,
+      outcome.status === 'fulfilled'
+        ? { ...was, accepted: was.accepted + 1 }
+        : { ...was, failed: was.failed + 1, error: String(outcome.reason instanceof Error ? outcome.reason.message : outcome.reason) },
+    );
+    this.onSaveResults(new Map(this.results));
+  }
+
+  /**
+   * Asks each relay on its own for the user's records, so it's clear which relays are storing the
+   * data and serving it back. A relay that can't be reached in time shows as not connected.
+   */
+  check(): Promise<RelayCheck[]> {
+    const expected = new Map(this.savedAt);
+    return Promise.all(
+      this.relays.map(async (url): Promise<RelayCheck> => {
+        const result: RelayCheck = { url, connected: false, expected: expected.size, held: 0, behind: 0 };
+        try {
+          await this.pool.ensureRelay(url, { connectionTimeout: 5000 });
+        } catch {
+          return result;
+        }
+        result.connected = true;
+        const events = await this.pool.querySync([url], this.filter(), { maxWait: 6000 });
+        for (const [d, event] of latestByTag(events)) {
+          const latest = expected.get(d);
+          if (latest === undefined) continue;
+          result.held++;
+          if (event.created_at < latest) result.behind++;
+        }
+        return result;
+      }),
+    );
+  }
 
   private filter(since?: number) {
     return { kinds: [KIND], authors: [this.signer.pubkey], ...(since ? { since } : {}) };
@@ -101,7 +165,12 @@ export class RelaySync {
       const newer = await this.pool.querySync(this.relays, this.filter(this.lastCreatedAt + 1), { maxWait: 4000 });
       if (await this.receive(newer)) return 0;
       let sent = 0;
-      for (const [d, plaintext] of this.changes(data)) {
+      const changes = this.changes(data);
+      if (changes.length > 0) {
+        this.results = new Map(this.relays.map((url) => [url, { accepted: 0, failed: 0 }]));
+        this.onSaveResults(new Map(this.results));
+      }
+      for (const [d, plaintext] of changes) {
         // Replaceable events keep the newest by created_at, so never reuse a second.
         this.lastCreatedAt = Math.max(Math.floor(Date.now() / 1000), this.lastCreatedAt + 1);
         const event = await this.signer.sign({
@@ -112,7 +181,13 @@ export class RelaySync {
         });
         // Mark it ours before it can echo back through the subscription.
         this.savedAt.set(d, event.created_at);
-        await Promise.any(this.pool.publish(this.relays, event, { maxWait: 6000 })).catch(() => {
+        // One relay at a time, so each relay's answer is known.
+        const answers = this.relays.map((url) => {
+          const answer = this.pool.publish([url], event, { maxWait: 6000 })[0];
+          void Promise.allSettled([answer]).then(([outcome]) => this.record(url, outcome));
+          return answer;
+        });
+        await Promise.any(answers).catch(() => {
           throw new Error("Couldn't reach any relay to save your data.");
         });
         this.saved.set(d, plaintext);
