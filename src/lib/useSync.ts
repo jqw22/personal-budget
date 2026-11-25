@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { loadAccount, restoreSigner, saveAccount, type SavedAccount } from './account';
 import { extensionSigner, keySigner, parseSecretKey, type Signer } from './nostr';
-import { RelaySync } from './relays';
+import { RelaySync, type RelayCheck, type SaveResult } from './relays';
 import { emptyData } from './store';
 import { applyRemote, mergeData } from './sync';
 import type { BudgetData } from './types';
@@ -25,6 +25,9 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
   const [signer, setSigner] = useState<Signer | null>(null);
   const [state, setState] = useState<SyncState>({ status: 'signed-out' });
   const sync = useRef<RelaySync | null>(null);
+  const [saveResults, setSaveResults] = useState<Map<string, SaveResult>>(new Map());
+  const [checks, setChecks] = useState<RelayCheck[] | null>(null);
+  const [checking, setChecking] = useState(false);
   // Saving waits until relay data has been loaded and merged, so it can't overwrite it.
   const loaded = useRef(false);
   const latest = useRef(data);
@@ -46,12 +49,32 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
     }
   }
 
+  async function runCheck(current: RelaySync) {
+    setChecking(true);
+    try {
+      const result = await current.check();
+      if (sync.current === current) setChecks(result);
+    } finally {
+      if (sync.current === current) setChecking(false);
+    }
+  }
+
   async function connect(next: Signer, relays: string[]) {
     sync.current?.close();
     loaded.current = false;
-    const current = new RelaySync(next, relays, (incoming, base) => {
-      if (sync.current === current) setData((local) => applyRemote(local, base, incoming));
-    });
+    const current = new RelaySync(
+      next,
+      relays,
+      (incoming, base) => {
+        if (sync.current === current) setData((local) => applyRemote(local, base, incoming));
+      },
+      (results) => {
+        if (sync.current === current) setSaveResults(results);
+      },
+    );
+    setSaveResults(new Map());
+    setChecks(null);
+    setChecking(false);
     sync.current = current;
     setSigner(next);
     setState({ status: 'loading' });
@@ -63,6 +86,7 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
       loaded.current = true;
       setState({ status: 'saved', savedAt: new Date() });
       await save(current, merged);
+      await runCheck(current);
     } catch (e) {
       if (sync.current === current) setState({ status: 'error', message: errorMessage(e) });
     }
@@ -89,6 +113,13 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
     account,
     signer,
     state,
+    saveResults,
+    checks,
+    checking,
+    /** Asks each relay on its own what it holds. */
+    async checkRelays() {
+      if (sync.current && loaded.current) await runCheck(sync.current);
+    },
     async signInWithExtension() {
       const next = await extensionSigner();
       updateAccount({ relays: account.relays, method: 'extension' });

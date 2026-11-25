@@ -480,6 +480,20 @@ form.signin label {
   gap: 4px;
 }
 
+table.relay-table {
+  margin: 8px 0;
+  font-size: 0.9rem;
+}
+
+table.relay-table td:last-child {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+div.relay-check {
+  margin-bottom: 12px;
+}
+
 textarea.relays {
   width: 100%;
   max-width: 420px;

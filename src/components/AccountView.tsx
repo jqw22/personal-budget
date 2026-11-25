@@ -86,6 +86,7 @@ export function AccountView({ sync, data, onChange }: Props) {
     <>
       <h3>Relays</h3>
       <p className="muted small">The Nostr relays your encrypted data is saved to, one per line.</p>
+      {signer && <RelayTable sync={sync} />}
       <textarea className="relays" rows={4} value={relays} onChange={(e) => setRelays(e.target.value)} aria-label="Relays" />
       <div>
         <button
@@ -252,6 +253,76 @@ function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (
           </button>
         </form>
       )}
+    </>
+  );
+}
+
+/** A relay's reason for turning a save down, in plain words. */
+function refusal(error: string): string {
+  if (/connection|connect/i.test(error)) return "couldn't connect";
+  if (/timed? ?out/i.test(error)) return 'no answer';
+  return error.replace(/^(blocked|restricted|rate-limited|invalid|error|pow|duplicate):\s*/i, '');
+}
+
+/** One row per relay: whether it's reachable, what it serves back, and how it took the last save. */
+function RelayTable({ sync }: { sync: Props['sync'] }) {
+  const { account, checks, checking, saveResults, state, checkRelays } = sync;
+  const ready = state.status === 'saved' || state.status === 'saving' || state.status === 'error';
+
+  return (
+    <>
+      <table className="relay-table">
+        <thead>
+          <tr>
+            <th>Relay</th>
+            <th>Connected</th>
+            <th>Holds</th>
+            <th>Up to date</th>
+            <th>Last save</th>
+          </tr>
+        </thead>
+        <tbody>
+          {account.relays.map((url) => {
+            const check = checks?.find((c) => c.url === url);
+            const saved = saveResults.get(url);
+            const missing = check ? check.expected - check.held : 0;
+            return (
+              <tr key={url}>
+                <td>{url.replace(/^wss?:\/\//, '')}</td>
+                <td className={check && !check.connected ? 'warning' : undefined}>
+                  {checking || !check ? '…' : check.connected ? 'Yes' : 'No'}
+                </td>
+                <td className={check?.connected && missing > 0 ? 'warning' : undefined}>
+                  {checking || !check?.connected ? '' : `${check.held} of ${check.expected}`}
+                </td>
+                <td className={check?.connected && (missing > 0 || check.behind > 0) ? 'warning' : undefined}>
+                  {checking || !check?.connected
+                    ? ''
+                    : missing === 0 && check.behind === 0
+                      ? 'Yes'
+                      : [check.behind > 0 && `${check.behind} older`, missing > 0 && `${missing} missing`]
+                          .filter(Boolean)
+                          .join(', ')}
+                </td>
+                <td className={saved && saved.failed > 0 ? 'warning' : undefined} title={saved?.error}>
+                  {!saved
+                    ? 'No save yet'
+                    : saved.failed > 0
+                      ? `Refused ${saved.failed}${saved.error ? `: ${refusal(saved.error)}` : ''}`
+                      : saved.accepted > 0
+                        ? `Accepted ${saved.accepted}`
+                        : 'Waiting…'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="relay-check">
+        <button onClick={() => void checkRelays()} disabled={checking || !ready}>
+          {checking ? 'Checking…' : 'Check relays'}
+        </button>
+      </div>
     </>
   );
 }
