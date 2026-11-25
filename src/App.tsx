@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { AccountView, syncLabel } from './components/AccountView';
-import { ImportView } from './components/ImportView';
 import { isTagged } from './lib/splits';
 import { InsightsView } from './components/InsightsView';
 import { RulesView } from './components/RulesView';
@@ -11,13 +10,13 @@ import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
 import { useSync } from './lib/useSync';
 
-type Tab = 'summary' | 'insights' | 'import' | 'transactions' | 'categories' | 'rules' | 'account';
+type Tab = 'summary' | 'insights' | 'transactions' | 'categories' | 'rules' | 'account';
 /** The Insights tab is hidden for now; its code stays so it can come back. */
 const SHOW_INSIGHTS = false;
 
 export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
-  const [tab, setTab] = useState<Tab>(() => (data.transactions.length ? 'summary' : 'import'));
+  const [tab, setTab] = useState<Tab>(() => (data.transactions.length ? 'summary' : 'transactions'));
   const [txFilter, setTxFilter] = useState<TransactionFilter | undefined>();
 
   function openTab(next: Tab) {
@@ -54,9 +53,6 @@ export function App() {
           )}
           <button className={tab === 'transactions' ? 'active' : ''} onClick={() => openTab('transactions')}>
             Transactions{untagged > 0 && <span className="badge">{untagged}</span>}
-          </button>
-          <button className={tab === 'import' ? 'active' : ''} onClick={() => openTab('import')}>
-            Import
           </button>
           <button className={tab === 'categories' ? 'active' : ''} onClick={() => openTab('categories')}>
             Categories
@@ -102,7 +98,6 @@ export function App() {
             onOpenAccount={() => openTab('account')}
           />
         )}
-        {tab === 'import' && <ImportView data={data} onChange={setData} onDone={() => openTab('transactions')} />}
         {tab === 'transactions' && <TransactionsView data={data} onChange={setData} initialFilter={txFilter} />}
         {tab === 'categories' && <RulesView data={data} onChange={setData} part="categories" />}
         {tab === 'rules' && <RulesView data={data} onChange={setData} part="rules" />}

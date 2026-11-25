@@ -60,7 +60,7 @@ export function SummaryView({ data, onShowTransactions, onChange }: Props) {
     return (
       <section>
         <h2>Summary</h2>
-        <p className="muted">No transactions yet. Import a CSV to get started.</p>
+        <p className="muted">No transactions yet. Import a CSV on the Transactions tab to get started.</p>
       </section>
     );
   }

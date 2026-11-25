@@ -1156,3 +1156,20 @@ table.transactions thead tr:first-child > th:nth-child(2) {
 table.transactions thead tr:first-child > th:nth-child(4) {
   width: 100%;
 }
+
+/* A page heading with a button at its right. */
+.heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* The statement import, opened above the transactions list. */
+.import-panel {
+  margin: 8px 0 16px;
+  padding: 0 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}

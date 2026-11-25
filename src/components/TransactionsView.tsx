@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { AutoTag } from './AutoTag';
+import { ImportView } from './ImportView';
 import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, upsertRule } from '../lib/rules';
 import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
@@ -79,6 +80,8 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
   const [splitting, setSplitting] = useState<string | null>(null);
   /** The transaction whose note is being written, and the text so far. */
   const [noting, setNoting] = useState<{ id: string; text: string } | null>(null);
+  /** Whether the bank statement import is open above the list. */
+  const [importing, setImporting] = useState(false);
 
   const shown = data.transactions
     .filter((t) => month === 'all' || t.date.startsWith(month))
@@ -141,14 +144,8 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
     setNoting(null);
   }
 
-  if (data.transactions.length === 0) {
-    return (
-      <section>
-        <h2>Transactions</h2>
-        <p className="muted">No transactions yet. Import a CSV to get started.</p>
-      </section>
-    );
-  }
+  // With nothing imported yet, the import is all there is to show.
+  if (data.transactions.length === 0) return <ImportView data={data} onChange={onChange} onDone={() => setImporting(false)} />;
 
   // Worked back from the bank's own balance column in the imported statements.
   const opening = impliedOpeningBalance(data.transactions);
@@ -159,7 +156,15 @@ export function TransactionsView({ data, onChange, initialFilter }: Props) {
 
   return (
     <section>
-      <h2>Transactions</h2>
+      <div className="heading-row">
+        <h2>Transactions</h2>
+        <button onClick={() => setImporting(!importing)}>{importing ? 'Close import' : 'Import CSV'}</button>
+      </div>
+      {importing && (
+        <div className="import-panel">
+          <ImportView data={data} onChange={onChange} onDone={() => setImporting(false)} />
+        </div>
+      )}
       <p className="muted">
         {untagged === 0 ? 'Everything is tagged.' : `${untagged} of ${data.transactions.length} still need a category.`}
       </p>
