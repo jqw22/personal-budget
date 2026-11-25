@@ -752,8 +752,8 @@ table.summary.combined .fc-start {
   border-left: 2px solid var(--border);
 }
 
-/* Only the headings mark the planned months; their figures look just like the actual ones. */
-table.summary.combined thead .fc {
+/* The planned months are shaded pink; their figures read like the actual ones. */
+table.summary.combined .fc {
   background: var(--forecast);
 }
 
