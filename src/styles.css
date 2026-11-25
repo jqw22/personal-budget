@@ -1270,3 +1270,23 @@ table.summary.planning input.forecast-input {
   max-width: 5em;
   padding: 1px 3px;
 }
+
+/* The heading row stays at the top while the plan scrolls, as on the summary. */
+table.summary.planning {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table.summary.planning thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+table.summary.planning thead th {
+  background: var(--surface);
+}
+
+table.summary.planning thead th.plan-col {
+  background: var(--avg);
+}

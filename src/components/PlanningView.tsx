@@ -86,7 +86,7 @@ export function PlanningView({ data, onChange }: Props) {
       </div>
 
       <h2>Planning</h2>
-      <div className="table-wrap">
+      <div className="table-wrap summary-wrap">
         <table className="summary planning">
           <thead>
             <tr>
