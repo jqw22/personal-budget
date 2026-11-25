@@ -1314,3 +1314,36 @@ table.summary.planning td.plan-col input.forecast-input:is(:hover, :focus) {
   background: var(--surface);
   color: var(--text);
 }
+
+/* The lock above each year's three columns. */
+table.summary.planning tr.locks th {
+  padding: 2px 4px 4px;
+  text-align: center;
+  border-bottom: none;
+}
+
+table.summary.planning .lock-button {
+  font: inherit;
+  font-size: 0.85em;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+table.summary.planning .lock-button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+table.summary.planning .lock-button.locked {
+  background: var(--avg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+table.summary.planning td.plan-col.locked-cell {
+  color: var(--muted);
+}

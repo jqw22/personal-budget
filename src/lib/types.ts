@@ -60,6 +60,8 @@ export interface BudgetData {
    * row ("Income" or a spending category). Rows left out use the monthly average.
    */
   forecast?: Record<string, Record<string, number>>;
+  /** Years whose planned figures are locked on the Planning tab, so they can't be changed by accident. */
+  lockedYears?: string[];
   /** Year budgets typed in by the user, in pence, by year ("2026") then row ("Income", "Transfers" or a spending category). */
   budgets?: Record<string, Record<string, number>>;
   /** Balance before the first transaction, in pence, typed in by the user for the running balance in downloads. */

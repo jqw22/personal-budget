@@ -43,6 +43,11 @@ export function PlanningView({ data, onChange }: Props) {
   const groups = [...groupIncome(rows, data, true), ...groupSpending(rows, data, true)];
 
   const planned = (year: string, row: string) => data.budgets?.[year]?.[row] ?? 0;
+  const locked = (year: string) => (data.lockedYears ?? []).includes(year);
+  function setLocked(year: string, on: boolean) {
+    const others = (data.lockedYears ?? []).filter((y) => y !== year);
+    onChange({ ...data, lockedYears: on ? [...others, year].sort() : others });
+  }
   const actual = (i: number, row: string) => totals[i].byCategory.get(row) ?? 0;
   function setPlanned(year: string, row: string, pence: number | null) {
     const rows = { ...data.budgets?.[year] };
@@ -89,6 +94,21 @@ export function PlanningView({ data, onChange }: Props) {
       <div className="table-wrap summary-wrap">
         <table className="summary planning">
           <thead>
+            <tr className="locks">
+              <th />
+              {shown.map((y) => (
+                <th key={y} colSpan={3} className="year-start">
+                  <button
+                    className={`lock-button ${locked(y) ? 'locked' : ''}`}
+                    aria-pressed={locked(y)}
+                    title={locked(y) ? `${y}'s planned figures are locked. Click to unlock them.` : `Lock ${y}'s planned figures so they can't be changed by accident`}
+                    onClick={() => setLocked(y, !locked(y))}
+                  >
+                    {locked(y) ? `🔒 ${y} locked` : `🔓 Lock ${y}`}
+                  </button>
+                </th>
+              ))}
+            </tr>
             <tr>
               <th>Category</th>
               {shown.map((y) => (
@@ -129,8 +149,10 @@ export function PlanningView({ data, onChange }: Props) {
                     <td>{category}</td>
                     {shown.map((y, i) => (
                       <Fragment key={y}>
-                        <td className="num plan-col year-start">
-                          {category !== UNTAGGED && (
+                        <td className={`num plan-col year-start ${locked(y) ? 'locked-cell' : ''}`}>
+                          {category !== UNTAGGED && locked(y) ? (
+                            formatPounds(planned(y, category))
+                          ) : category !== UNTAGGED && (
                             <MoneyInput
                               value={planned(y, category)}
                               edited={data.budgets?.[y]?.[category] !== undefined}
