@@ -183,30 +183,11 @@ describe('opening balance sync', () => {
   });
 });
 
-describe('goals and insights sync', () => {
-  const goals = [{ id: 'g1', text: 'Save £3,000' }];
-  const insight = { at: '2026-10-19T10:00:00.000Z', text: '## What changed' };
-
-  it('round-trips goals, the API key and the last review', () => {
-    const saved = data([tx('a', '2026-05-01')], { goals, anthropicKey: 'sk-ant-x', insight });
-    expect(fromChunks(toChunks(saved))).toMatchObject({ goals, anthropicKey: 'sk-ant-x', insight });
-  });
-
-  it('combines goals from both devices and keeps the newer review', () => {
-    const newer = { at: '2026-10-20T10:00:00.000Z', text: 'newer' };
-    const local = data([tx('a', '2026-05-01')], { goals, insight });
-    const remote = data([], { goals: [{ id: 'g2', text: 'Pay off card' }], anthropicKey: 'sk-ant-x', insight: newer });
-    expect(mergeData(local, remote)).toMatchObject({
-      goals: [...goals, { id: 'g2', text: 'Pay off card' }],
-      anthropicKey: 'sk-ant-x',
-      insight: newer,
-    });
-  });
-
-  it("takes another device's goals when they changed only there", () => {
-    const saved = data([tx('a', '2026-05-01')], { goals });
-    const theirs = toChunks({ ...saved, goals: [] });
-    expect(applyRemote(saved, toChunks(saved), theirs).goals).toEqual([]);
+describe('API key sync', () => {
+  it('round-trips the API key and takes it from the other device when this one has none', () => {
+    const saved = data([tx('a', '2026-05-01')], { anthropicKey: 'sk-ant-x' });
+    expect(fromChunks(toChunks(saved))).toMatchObject({ anthropicKey: 'sk-ant-x' });
+    expect(mergeData(data([tx('a', '2026-05-01')]), data([], { anthropicKey: 'sk-ant-x' })).anthropicKey).toBe('sk-ant-x');
   });
 });
 

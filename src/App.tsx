@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AccountView, syncLabel } from './components/AccountView';
 import { isTagged } from './lib/splits';
-import { InsightsView } from './components/InsightsView';
 import { RulesView } from './components/RulesView';
 import { SummaryView } from './components/SummaryView';
 import { TransactionsView, UNTAGGED_FILTER, type TransactionFilter } from './components/TransactionsView';
@@ -10,9 +9,7 @@ import { loadData, saveData } from './lib/store';
 import type { BudgetData } from './lib/types';
 import { useSync } from './lib/useSync';
 
-type Tab = 'summary' | 'insights' | 'transactions' | 'categories' | 'rules' | 'account';
-/** The Insights tab is hidden for now; its code stays so it can come back. */
-const SHOW_INSIGHTS = false;
+type Tab = 'summary' | 'transactions' | 'categories' | 'rules' | 'account';
 
 export function App() {
   const [data, setData] = useState<BudgetData>(loadData);
@@ -49,11 +46,6 @@ export function App() {
           <button className={tab === 'summary' ? 'active' : ''} onClick={() => openTab('summary')}>
             Summary
           </button>
-          {SHOW_INSIGHTS && (
-            <button className={tab === 'insights' ? 'active' : ''} onClick={() => openTab('insights')}>
-              Insights
-            </button>
-          )}
           <button className={tab === 'transactions' ? 'active' : ''} onClick={() => openTab('transactions')}>
             Transactions{untagged > 0 && <span className="badge">{untagged}</span>}
           </button>
@@ -91,14 +83,6 @@ export function App() {
               setTxFilter({ month, category: category ?? UNTAGGED_FILTER });
               setTab('transactions');
             }}
-          />
-        )}
-        {SHOW_INSIGHTS && tab === 'insights' && (
-          <InsightsView
-            data={data}
-            onChange={setData}
-            onInsight={(insight) => setData((current) => ({ ...current, insight }))}
-            onOpenAccount={() => openTab('account')}
           />
         )}
         {tab === 'transactions' && (

@@ -212,14 +212,14 @@ export function AccountView({ sync, data, onChange }: Props) {
   );
 }
 
-/** The user's own Anthropic API key, which the Insights tab uses to ask Claude for a review. */
+/** The user's own Anthropic API key, which suggesting categories for untagged merchants uses. */
 function ClaudeKey({ data, onChange, signedIn }: { data: BudgetData; onChange: (data: BudgetData) => void; signedIn: boolean }) {
   const [key, setKey] = useState('');
   const { anthropicKey: saved, ...rest } = data;
 
   return (
     <>
-      <h3>Dad's insights</h3>
+      <h3>Dad's tag suggestions</h3>
       <p className="muted small">
         Your API key is kept with your budget
         {signedIn ? ', encrypted on your relays, so it works on your other devices too' : ' on this device'}.
