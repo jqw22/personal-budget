@@ -20,6 +20,8 @@ export interface Transaction {
   splits?: Split[];
   /** The user's own note. The imported description is never changed, so duplicates and rules still match. */
   note?: string;
+  /** Typed in by hand on the Transactions tab rather than imported; only these can be deleted. */
+  manual?: true;
 }
 
 export interface Split {

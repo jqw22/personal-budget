@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
+import { AddTransaction } from './AddTransaction';
 import { ImportView } from './ImportView';
 import { formatDate, formatMoney, formatMonth } from '../lib/format';
 import { applyRules, findRule, upsertRule } from '../lib/rules';
@@ -81,6 +82,7 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
   const [noting, setNoting] = useState<{ id: string; text: string } | null>(null);
   /** Whether the bank statement import is open above the list. */
   const [importing, setImporting] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const shown = data.transactions
     .filter((t) => month === 'all' || t.date.startsWith(month))
@@ -160,8 +162,16 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
     <section>
       <div className="heading-row">
         <h2>Transactions</h2>
-        <button onClick={() => setImporting(!importing)}>{importing ? 'Close import' : 'Import CSV'}</button>
+        <div className="actions">
+          <button onClick={() => setAdding(!adding)}>{adding ? 'Close' : 'Add transaction'}</button>
+          <button onClick={() => setImporting(!importing)}>{importing ? 'Close import' : 'Import CSV'}</button>
+        </div>
       </div>
+      {adding && (
+        <div className="import-panel">
+          <AddTransaction data={data} onChange={onChange} onDone={() => setAdding(false)} options={<CategoryOptions groups={tagGroups} />} />
+        </div>
+      )}
       {importing && (
         <div className="import-panel">
           <ImportView data={data} onChange={onChange} onDone={() => setImporting(false)} />
@@ -289,6 +299,15 @@ export function TransactionsView({ data, onChange, initialFilter, onOpenRule }: 
                     )}
                   </td>
                   <td className="nowrap">
+                    {t.manual && (
+                      <button
+                        className="link auto-link"
+                        title="Added by hand. Click to delete it."
+                        onClick={() => window.confirm(`Delete ${t.description} (${formatMoney(t.amount)}, ${formatDate(t.date)})?`) && onChange({ ...data, transactions: data.transactions.filter((x) => x.id !== t.id) })}
+                      >
+                        Added ×
+                      </button>
+                    )}
                     {t.categorySource === 'rule' && (
                       <button
                         className="link auto-link"

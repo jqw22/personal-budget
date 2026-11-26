@@ -1376,3 +1376,32 @@ table input.forecast-input.negative {
 svg text.negative {
   fill: var(--negative);
 }
+
+/* Adding a transaction by hand. */
+form.add-transaction {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+form.add-transaction input[type='date'] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+form.add-transaction input[aria-label='Description'] {
+  width: 220px;
+}
+
+form.add-transaction .amount-input {
+  width: 100px;
+  text-align: right;
+}
+
+form.add-transaction button.primary {
+  margin-top: 0;
+  padding: 6px 14px;
+}
