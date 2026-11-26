@@ -60,9 +60,24 @@ export function AccountView({ sync, onChange }: Props) {
     <>
       <h2>Your data</h2>
       <p className="muted">Everything is saved in this browser{signer ? ' and synced to your relays' : ''}.</p>
-      {confirmReset ? (
+      {confirmClear ? (
         <p>
-          Delete all transactions, rules and categories from {signer ? 'this browser and your relays' : 'this browser'}?{' '}
+          Delete your budget from this browser?{signer ? ' This signs you out. The encrypted copy on your relays stays, so you can sign back in to get it.' : ''}{' '}
+          <button
+            className="danger"
+            onClick={() => {
+              if (signer) sync.signOut(true);
+              else onChange(emptyData());
+              setConfirmClear(false);
+            }}
+          >
+            Yes, delete from this browser
+          </button>{' '}
+          <button onClick={() => setConfirmClear(false)}>Cancel</button>
+        </p>
+      ) : confirmReset ? (
+        <p>
+          Delete all transactions, rules and categories from this browser and your relays? This can't be undone.{' '}
           <button
             className="danger"
             onClick={() => {
@@ -70,12 +85,15 @@ export function AccountView({ sync, onChange }: Props) {
               setConfirmReset(false);
             }}
           >
-            Yes, delete everything
+            Yes, delete everywhere
           </button>{' '}
           <button onClick={() => setConfirmReset(false)}>Cancel</button>
         </p>
       ) : (
-        <button onClick={() => setConfirmReset(true)}>{signer ? 'Delete browser and relay data…' : 'Delete browser data…'}</button>
+        <div className="actions">
+          <button onClick={() => setConfirmClear(true)}>Delete browser data…</button>
+          {signer && <button onClick={() => setConfirmReset(true)}>Delete browser and relay data…</button>}
+        </div>
       )}
     </>
   );
@@ -115,25 +133,7 @@ export function AccountView({ sync, onChange }: Props) {
             Sync now
           </button>
           <button onClick={() => sync.signOut(false)}>Sign out</button>
-          {confirmClear ? (
-            <>
-              <button className="danger" onClick={() => sync.signOut(true)}>
-                Yes, sign out and clear
-              </button>
-              <button onClick={() => setConfirmClear(false)}>Cancel</button>
-            </>
-          ) : (
-            <button className="danger" onClick={() => setConfirmClear(true)}>
-              Sign out and clear this device
-            </button>
-          )}
         </div>
-        {confirmClear && (
-          <p className="muted small">
-            This removes your budget from this browser. The encrypted copy on your relays stays, so you can sign back in to
-            get it.
-          </p>
-        )}
         {relaySettings}
         {dataSettings}
       </section>
