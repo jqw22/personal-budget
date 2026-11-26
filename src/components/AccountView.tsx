@@ -48,6 +48,7 @@ export function AccountView({ sync, data, onChange }: Props) {
   const [relays, setRelays] = useState(account.relays.join('\n'));
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmAgain, setConfirmAgain] = useState(false);
   const [restore, setRestore] = useState<{ data: BudgetData; name: string } | null>(null);
   const [restoreError, setRestoreError] = useState('');
   const backupInput = useRef<HTMLInputElement>(null);
@@ -94,6 +95,21 @@ export function AccountView({ sync, data, onChange }: Props) {
           </button>{' '}
           <button onClick={() => setConfirmClear(false)}>Cancel</button>
         </p>
+      ) : confirmAgain ? (
+        <p>
+          <strong>Are you sure?</strong> Your budget will be gone from this browser and your relays, and only a downloaded copy
+          can bring it back.{' '}
+          <button
+            className="danger"
+            onClick={() => {
+              onChange(emptyData());
+              setConfirmAgain(false);
+            }}
+          >
+            Yes, I'm sure
+          </button>{' '}
+          <button onClick={() => setConfirmAgain(false)}>Cancel</button>
+        </p>
       ) : confirmReset ? (
         <p>
           Delete all transactions, rules and categories from this browser and your relays? This can't be undone, so
@@ -106,8 +122,8 @@ export function AccountView({ sync, data, onChange }: Props) {
           <button
             className="danger"
             onClick={() => {
-              onChange(emptyData());
               setConfirmReset(false);
+              setConfirmAgain(true);
             }}
           >
             Yes, delete everywhere
