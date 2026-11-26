@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './styles.css';
 import { IS_TEST_COPY, STORAGE_PREFIX } from './lib/env';
+import { watchNegatives } from './lib/negatives';
 
 if (IS_TEST_COPY) document.title = 'Personal Budget (test copy)';
 
@@ -20,7 +21,9 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload();
 });
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')!;
+watchNegatives(root);
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,
