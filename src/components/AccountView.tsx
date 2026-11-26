@@ -62,7 +62,7 @@ export function AccountView({ sync, onChange }: Props) {
       <p className="muted">Everything is saved in this browser{signer ? ' and synced to your relays' : ''}.</p>
       {confirmReset ? (
         <p>
-          Delete all transactions, rules and categories?{' '}
+          Delete all transactions, rules and categories from {signer ? 'this browser and your relays' : 'this browser'}?{' '}
           <button
             className="danger"
             onClick={() => {
@@ -75,7 +75,7 @@ export function AccountView({ sync, onChange }: Props) {
           <button onClick={() => setConfirmReset(false)}>Cancel</button>
         </p>
       ) : (
-        <button onClick={() => setConfirmReset(true)}>Delete all data…</button>
+        <button onClick={() => setConfirmReset(true)}>{signer ? 'Delete browser and relay data…' : 'Delete browser data…'}</button>
       )}
     </>
   );
