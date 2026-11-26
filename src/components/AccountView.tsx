@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { newSecretKey, npub } from '../lib/nostr';
+import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
 import { emptyData } from '../lib/store';
 import type { BudgetData } from '../lib/types';
 import type { useSync } from '../lib/useSync';
 
 interface Props {
   sync: ReturnType<typeof useSync>;
+  data: BudgetData;
   onChange: (data: BudgetData) => void;
 }
 
@@ -29,7 +31,15 @@ export function syncLabel(state: Props['sync']['state']): string {
   }
 }
 
-export function AccountView({ sync, onChange }: Props) {
+export function AccountView({ sync, data, onChange }: Props) {
+  const today = new Date().toISOString().slice(0, 10);
+  function downloadTransactions() {
+    const opening = impliedOpeningBalance(data.transactions);
+    download(`transactions-all-${today}.csv`, toCsv(data.transactions, opening === null ? undefined : runningBalances(data.transactions, opening)));
+  }
+  function downloadEverything() {
+    download(`personal-budget-backup-${today}.json`, JSON.stringify(data, null, 2));
+  }
   const { signer, state, account } = sync;
   const [nsec, setNsec] = useState('');
   const [remember, setRemember] = useState(true);
@@ -77,7 +87,13 @@ export function AccountView({ sync, onChange }: Props) {
         </p>
       ) : confirmReset ? (
         <p>
-          Delete all transactions, rules and categories from this browser and your relays? This can't be undone.{' '}
+          Delete all transactions, rules and categories from this browser and your relays? This can't be undone, so
+          download a copy first:{' '}
+          <button onClick={downloadTransactions} disabled={data.transactions.length === 0}>
+            Transactions (CSV)
+          </button>{' '}
+          <button onClick={downloadEverything}>Everything (backup file)</button>
+          <br />
           <button
             className="danger"
             onClick={() => {
