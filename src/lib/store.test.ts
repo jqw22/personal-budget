@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addCategory, categoryUse, emptyData, migrate, removeCategory, renameCategory, setArchived } from './store';
+import { addCategory, categoryUse, emptyData, migrate, parseBackup, removeCategory, renameCategory, setArchived } from './store';
 import { incomeCategories, typeList, type BudgetData, type Transaction } from './types';
 
 function tx(id: string, category: string | null): Transaction {
@@ -102,5 +102,19 @@ describe('adding, archiving and removing categories', () => {
     expect(removed.transactions[0].category).toBeNull();
     expect(removed.rules).toEqual([]);
     expect(removed.deletedCategories).toEqual(['Rent']);
+  });
+});
+
+describe('parseBackup', () => {
+  it('reads back a downloaded budget', () => {
+    const data = { ...emptyData(), categories: ['Rent'], transactions: [{ id: 'a', date: '2026-01-02', description: 'X', merchant: 'X', amount: -100, category: 'Rent' }] };
+    const back = parseBackup(JSON.stringify(data, null, 2));
+    expect(back?.transactions).toHaveLength(1);
+    expect(back?.categories).toEqual(['Rent']);
+  });
+  it('turns down anything else', () => {
+    expect(parseBackup('not json')).toBeNull();
+    expect(parseBackup('{"hello":1}')).toBeNull();
+    expect(parseBackup('Date,Amount\n')).toBeNull();
   });
 });

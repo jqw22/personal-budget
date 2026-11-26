@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { newSecretKey, npub } from '../lib/nostr';
 import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
-import { emptyData } from '../lib/store';
+import { emptyData, parseBackup } from '../lib/store';
 import type { BudgetData } from '../lib/types';
 import type { useSync } from '../lib/useSync';
 
@@ -48,6 +48,15 @@ export function AccountView({ sync, data, onChange }: Props) {
   const [relays, setRelays] = useState(account.relays.join('\n'));
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [restore, setRestore] = useState<{ data: BudgetData; name: string } | null>(null);
+  const [restoreError, setRestoreError] = useState('');
+  const backupInput = useRef<HTMLInputElement>(null);
+  async function pickBackup(file: File | undefined) {
+    if (!file) return;
+    const backup = parseBackup(await file.text());
+    setRestoreError(backup ? '' : `${file.name} isn't a backup file from this app.`);
+    setRestore(backup && { data: backup, name: file.name });
+  }
 
   async function attempt(action: () => Promise<void>) {
     setError(null);
@@ -105,12 +114,39 @@ export function AccountView({ sync, data, onChange }: Props) {
           </button>{' '}
           <button onClick={() => setConfirmReset(false)}>Cancel</button>
         </p>
+      ) : restore ? (
+        <p>
+          Replace the budget in this browser with {restore.name} ({restore.data.transactions.length} transactions)?
+          {signer ? ' It will then be saved to the relays for the key you are signed in with.' : ' Sign in afterwards to save it to your relays under any key.'}{' '}
+          <button
+            className="danger"
+            onClick={() => {
+              onChange(restore.data);
+              setRestore(null);
+            }}
+          >
+            Yes, restore
+          </button>{' '}
+          <button onClick={() => setRestore(null)}>Cancel</button>
+        </p>
       ) : (
         <div className="actions">
+          <button onClick={() => backupInput.current?.click()}>Restore from backup…</button>
+          <input
+            ref={backupInput}
+            type="file"
+            accept=".json,application/json"
+            hidden
+            onChange={(e) => {
+              void pickBackup(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
           <button onClick={() => setConfirmClear(true)}>Delete browser data…</button>
           {signer && <button onClick={() => setConfirmReset(true)}>Delete browser and relay data…</button>}
         </div>
       )}
+      {restoreError && <p className="warning">{restoreError}</p>}
     </>
   );
 

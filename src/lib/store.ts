@@ -281,3 +281,18 @@ export function mergeTransactions(data: BudgetData, incoming: Transaction[]): { 
   );
   return { data: { ...data, transactions }, added: fresh.length };
 }
+
+/**
+ * Reads a backup file made by "Everything (backup file)": the whole budget as JSON. Returns null when
+ * the text isn't one. The budget is upgraded like saved data, so older backups still load. It holds
+ * no key, so it can be restored under any Nostr key or none.
+ */
+export function parseBackup(text: string): BudgetData | null {
+  try {
+    const raw = JSON.parse(text);
+    if (!raw || typeof raw !== 'object' || !Array.isArray(raw.transactions) || !Array.isArray(raw.categories)) return null;
+    return migrate({ rules: [], version: 1, ...raw });
+  } catch {
+    return null;
+  }
+}
