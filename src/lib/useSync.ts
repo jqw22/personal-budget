@@ -101,7 +101,12 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
     const saved = loadAccount();
     if (!saved.method) return;
     restoreSigner(saved)
-      .then((restored) => restored && connect(restored, saved.relays))
+      .then((restored) => {
+        if (!restored) return;
+        // Accounts saved before the npub was remembered pick it up now.
+        if (!saved.pubkey) updateAccount({ ...saved, pubkey: restored.pubkey });
+        return connect(restored, saved.relays);
+      })
       .catch((e) => setState({ status: 'error', message: errorMessage(e) }));
     return () => sync.current?.close();
     // Runs once, on opening the app.
@@ -142,12 +147,12 @@ export function useSync(data: BudgetData, setData: Dispatch<SetStateAction<Budge
     },
     async signInWithExtension() {
       const next = await extensionSigner();
-      updateAccount({ relays: account.relays, method: 'extension' });
+      updateAccount({ relays: account.relays, method: 'extension', pubkey: next.pubkey });
       await connect(next, account.relays);
     },
     async signInWithKey(nsec: string, remember: boolean) {
       const next = keySigner(parseSecretKey(nsec));
-      updateAccount({ relays: account.relays, method: 'key', nsec: remember ? nsec.trim() : undefined });
+      updateAccount({ relays: account.relays, method: 'key', nsec: remember ? nsec.trim() : undefined, pubkey: next.pubkey });
       await connect(next, account.relays);
     },
     signOut(clearDevice: boolean) {

@@ -10,6 +10,8 @@ export interface SavedAccount {
   method?: 'extension' | 'key';
   /** Only kept when the user chose to stay signed in with a private key. */
   nsec?: string;
+  /** The npub (hex) the user signed in as, so a browser extension switched to another account is caught. */
+  pubkey?: string;
 }
 
 export function loadAccount(): SavedAccount {
@@ -30,7 +32,7 @@ export async function restoreSigner(account: SavedAccount): Promise<Signer | nul
   if (account.method === 'extension') {
     // Some extensions add window.nostr a moment after the page loads.
     for (let i = 0; i < 10 && !window.nostr; i++) await new Promise((r) => setTimeout(r, 200));
-    return extensionSigner();
+    return extensionSigner(account.pubkey);
   }
   return account.method === 'key' && account.nsec ? keySigner(parseSecretKey(account.nsec)) : null;
 }

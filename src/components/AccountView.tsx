@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { newSecretKey, npub } from '../lib/nostr';
+import { newSecretKey, npub, shortNpub } from '../lib/nostr';
 import { download, impliedOpeningBalance, runningBalances, toCsv } from '../lib/export';
 import { emptyData, parseBackup } from '../lib/store';
 import type { BudgetData } from '../lib/types';
@@ -11,10 +11,6 @@ interface Props {
   onChange: (data: BudgetData) => void;
 }
 
-function shortNpub(pubkey: string): string {
-  const full = npub(pubkey);
-  return `${full.slice(0, 12)}…${full.slice(-6)}`;
-}
 
 export function syncLabel(state: Props['sync']['state']): string {
   switch (state.status) {
