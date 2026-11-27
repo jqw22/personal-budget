@@ -154,6 +154,7 @@ export class RelaySync {
 
   /** Downloads and decrypts everything saved, or null when nothing is, then starts listening for other devices. */
   async load(): Promise<BudgetData | null> {
+    await this.signer.verify();
     const events = await this.pool.querySync(this.relays, this.filter(), { maxWait: 6000 });
     const chunks = await this.read(events);
     for (const [d, plaintext] of chunks) this.saved.set(d, plaintext);
@@ -191,6 +192,7 @@ export class RelaySync {
    */
   save(data: BudgetData): Promise<number> {
     return this.enqueue(async () => {
+      await this.signer.verify();
       const newer = await this.pool.querySync(this.relays, this.filter(this.lastCreatedAt + 1), { maxWait: 4000 });
       if (await this.receive(newer)) return 0;
       let sent = 0;
